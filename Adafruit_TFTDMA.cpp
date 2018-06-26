@@ -197,7 +197,6 @@ bool Adafruit_TFTDMA::begin(void) {
     int               id    = tcList[tcNum].gclk; // Timer GCLK ID
     GCLK_PCHCTRL_Type pchctrl;
 
-
     // Set up timer clock source from GCLK above
     GCLK->PCHCTRL[id].bit.CHEN = 0;    // Disable timer
     while(GCLK->PCHCTRL[id].bit.CHEN); // Wait for disable
@@ -305,7 +304,7 @@ bool Adafruit_TFTDMA::begin(void) {
     return false; // Success
 }
 
-#if 0 // Isn't being used
+#if 0 // Not being used
 // Not really a full ID-reading function; just verifies if ILI9341!
 uint32_t Adafruit_TFTDMA::readID(void) {
     uint32_t id;
@@ -511,11 +510,16 @@ void TFT_framebuffer::fillRect(
 
 // Fill framebuffer with solid color
 void TFT_framebuffer::fillScreen(uint16_t color) {
-    color = (color << 8) | (color >> 8);     // Endian-swap color
-    uint32_t *fbuf32 = (uint32_t *)framebuf, // 32-bit pointer to framebuf
-              c32    = color * 0x00010001;   // 2 pixels at a time
-    for(uint32_t i=0; i<(TFTWIDTH*TFTHEIGHT/2); i++) fbuf32[i] = c32;
-    minx = miny = 0;      // Update dirty rect to screen bounds
+    color = (color << 8) | (color >> 8); // Endian-swap color
+    // We know framebuffer is 32-bit aligned and an even number
+    // of pixels, so we can do some 32-bit wide shenanigans...
+    uint32_t *fbuf32 = (uint32_t *)framebuf,
+              p2     = TFTWIDTH * TFTHEIGHT / 2,
+              c32    = color * 0x00010001;
+
+    while(p2--) *fbuf32++ = c32;
+
+    minx = miny = 0;  // Update dirty rect to screen bounds
     maxx = TFTWIDTH  - 1;
     maxy = TFTHEIGHT - 1;
 }
@@ -529,23 +533,29 @@ void TFT_framebuffer::sully(int16_t x, int16_t y) {
 }
 
 void TFT_framebuffer::update(void) {
+
     if(minx >= TFTWIDTH) return; // No changes since last update
+
     // User SHOULD have called waitForUpdate() so framebuffer isn't
     // modified during DMA transfer.  But just in case they forget,
     // wait for DMA completion if one's currently in progress.
+    // They'll still get glitches and other awfulness due to dirty
+    // rect changes (it's reset in waitForUpdate()), but at least
+    // it won't crash or hang.
     while(dma_busy);
 
     // Modify DMA descriptor list
-    uint16_t width  = maxx - minx + 1,
-             height = maxy - miny + 1;
+    uint16_t w      = maxx - minx + 1,
+             h      = maxy - miny;     // Is actually height - 1
     uint32_t offset = miny * TFTWIDTH + minx; // Index of first pixel
-    offset += width; // DMA src needs to be at END of data!
-    for(uint16_t d=0; d<height; d++, offset += TFTWIDTH) {
+    offset += w; // DMA src needs to be at END of data!
+    w      *= 2; // Byte count = 2X width
+    for(uint16_t d=0; d<=h; d++, offset += TFTWIDTH) {
         descriptor[d].SRCADDR.reg  = (uint32_t)&framebuf[offset];
-        descriptor[d].BTCNT.reg    = width * 2;
+        descriptor[d].BTCNT.reg    = w;
         descriptor[d].DESCADDR.reg = (uint32_t)&descriptor[d + 1];
     }
-    descriptor[height-1].DESCADDR.reg = 0; // End of list
+    descriptor[h].DESCADDR.reg = 0; // End of list
 
     // This also issues memory write command, keeps CS_ACTIVE & CD_DATA set
     setAddrWindow(minx, miny, maxx, maxy);
@@ -586,11 +596,171 @@ bool TFT_segmented::begin(void) {
       (void *)writePort,  // to here
       256,                // this many...
       DMA_BEAT_SIZE_BYTE, // bytes/hword/words
-      false,              // increment source addr?
+      true,               // increment source addr?
       false);             // increment dest addr?
     descriptor->BTCTRL.bit.EVOSEL = 0x3; // Event strobe on beat transfer
 
     return false; // Success
+}
+
+// Set pixel in framebuffer, NO clipping or dirty rect update
+// Color is already endian-swapped
+inline void TFT_segmented::rawPixel(int16_t x, int16_t y, uint16_t color) {
+    framebuf[y * width + x] = color;
+}
+
+// Set pixel in framebuffer, with clipping
+void TFT_segmented::drawPixel(int16_t x, int16_t y, uint16_t color) {
+    x -= xoffset;
+    y -= yoffset;
+    if((x >= 0) && (y >= 0) && (x < width) && (y < height)) {
+        color = (color << 8) | (color >> 8);
+        rawPixel(x, y, color);
+    }
+}
+
+void TFT_segmented::fillRect(
+  int16_t x1, int16_t y1, int16_t w, int16_t h, uint16_t color) {
+
+    if((w == 0) || (h == 0)) return; // Zero size
+
+    x1 -= xoffset;
+    y1 -= yoffset;
+
+    int16_t x2, y2;
+
+    // Sort inputs
+    if(w > 0) {
+        x2 = x1 + w - 1;
+    } else {
+        x2  =  x1;
+        x1 +=  w + 1;
+        w   = -w;
+    }
+    if(h > 0) {
+        y2 = y1 + h - 1;
+    } else {
+        y2  =  y1;
+        y1 +=  h + 1;
+        h   = -h;
+    }
+
+    // Off-screen clipping
+    if((x1 >= width) || (y1 >= height) || (x2 < 0) || (y2 < 0)) return;
+
+    // Edge clipping
+    if(x1 < 0) {
+        w += x1;
+        x1 = 0;
+    }
+    if(y1 < 0) {
+        h += y1;
+        y1 = 0;
+    }
+    if(x2 >= width) {
+        x2 = width - 1;
+        w  = width - x1;
+    }
+    if(y2 >= height) {
+        y2 = height - 1;
+        h  = height - y1;
+    }
+
+    uint16_t x, y, *ptr;
+    ptr   = &framebuf[y1 * width + x1];
+    color = (color << 8) | (color >> 8); // Endian-swap color
+    for(y=0; y<h; y++, ptr += width) {
+        for(x=0; x<w; x++) ptr[x] = color;
+    }
+}
+
+// Fill framebuffer with solid color
+void TFT_segmented::fillScreen(uint16_t color) {
+    color = (color << 8) | (color >> 8); // Endian-swap color
+    uint32_t i, pixels = width * height;
+
+    // Framebuffer might not be 32-bit aligned,
+    // so it's written 16 bits at a time.
+    for(i=0; i<pixels; i++) framebuf[i] = color;
+}
+
+void TFT_segmented::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
+  uint16_t *segmentBuf, uint16_t maxSegmentBytes,
+  void (*userCallback)(uint16_t *dest, uint16_t len)) {
+
+    while(dma_busy);
+
+    if(x1 > x2) { int16_t t = x1; x1 = x2; x2 = t; }
+    if(y1 > y2) { int16_t t = y1; y1 = y2; y2 = t; }
+    if(x1 < 0) x1 = 0;
+    if(y1 < 0) y1 = 0;
+    if(x2 >= TFTWIDTH)  x2 = TFTWIDTH  - 1;
+    if(y2 >= TFTHEIGHT) y2 = TFTHEIGHT - 1;
+
+    width = x2 - x1 + 1; // Width, in pixels, of update area & segment buffer
+    int16_t maxSegmentLines = (maxSegmentBytes / 2) / width; // Max lines/pass
+    if(maxSegmentLines <= 0) return; // Inadequate buffer size!
+
+    // This also issues memory write command, keeps CS_ACTIVE & CD_DATA set
+    setAddrWindow(x1, y1, x2, y2);
+
+    xoffset = x1;          // Offsets for the drawing functions
+    yoffset = y1;
+    height  = y2 - y1 + 1; // Height, in pixels, of area to update
+    if(maxSegmentLines > height) maxSegmentLines = height;
+
+    uint16_t *buf[2];
+    uint8_t   idx = 2;
+    int16_t   linesRemaining   = height,
+              linesThisSegment = maxSegmentLines;
+    buf[0] =  segmentBuf;
+    buf[1] = &segmentBuf[maxSegmentBytes / 2];
+
+    pinPeripheral(wrPin, wrPeripheral); // Switch WR pin to timer/CCL
+
+    while(linesRemaining > 0) {
+        if(idx < 2) {
+            while(dma_busy); // Wait for prior transfer to complete
+            // Send from buf[idx]
+            descriptor->BTCNT.reg   = width * linesThisSegment * 2;
+            descriptor->SRCADDR.reg = (uint32_t)buf[idx] +
+                                      descriptor->BTCNT.reg;
+            dma_busy                = true;
+            dma.startJob();
+            dma.trigger();
+            linesRemaining         -= linesThisSegment;
+            idx                     = 1 - idx; // Toggle buffer index
+        } else {
+            idx = 0; // 1st pass; no DMA, begin filling buf[0]
+        }
+// Not sure why this delay is required...doesn't necessarily need
+// to be at this point, but somewhere in the linesRemaining loop.
+// Without it, the display shows occasional glitches that don't
+// correspond to the address window or pixel data being pushed,
+// but are nondestructive to the screen contents.  Strange.
+// Maybe DMA start/trigger can only be so often?  Framebuffer mode
+// doesn't exhibit this symptom, but it's one large DMA operation
+// (long descriptor chain) rather than multiple small triggerings.
+// If so -- determine minimal trigger time and compare micros()
+// against prior time so it's only delaying as much as required.
+delayMicroseconds(1500);
+
+        // Calculate size of next segment, render if needed
+        if(linesRemaining) {
+            if(linesThisSegment > linesRemaining)
+                linesThisSegment = linesRemaining;
+            framebuf = buf[idx];
+            height   = linesThisSegment;
+            (*userCallback)(framebuf, linesThisSegment);
+            yoffset += linesThisSegment;
+        }
+    }
+}
+
+void TFT_segmented::waitForUpdate(void) {
+    while(dma_busy);                  // Wait for DMA completion
+    pinPeripheral(wrPin, PIO_OUTPUT); // Switch WR pin back to GPIO
+    CS_IDLE;                          // Deselect TFT
 }
 
 //--------------------------------------------------------------------------
@@ -626,10 +796,12 @@ bool TFT_demoscene::begin(void) {
     // valid descriptor, so we do that here (though it's never used)
     (void)dma.addDescriptor(NULL, NULL, 42, DMA_BEAT_SIZE_BYTE, false, false);
 
-    // Point DMA descriptor base address to our descriptor list
-    // WILL PROBABLY DO THIS AT START OF SCANLINE FUNCTION,
-    // since there's two descriptor lists to alternate.
-//  setDmaDescriptorBase(scanline[0].descriptor);
+    // DMA descriptor base setting will occur in update()
 
     return false; // Success
 }
+
+void TFT_demoscene::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
+  void (*userCallback)(uint16_t *dest)) {
+}
+
