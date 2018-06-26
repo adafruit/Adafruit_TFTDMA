@@ -692,8 +692,8 @@ void TFT_segmented::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
 
     if(x1 > x2) { int16_t t = x1; x1 = x2; x2 = t; }
     if(y1 > y2) { int16_t t = y1; y1 = y2; y2 = t; }
-    if(x1 < 0) x1 = 0;
-    if(y1 < 0) y1 = 0;
+    if(x1 < 0)          x1 = 0;
+    if(y1 < 0)          y1 = 0;
     if(x2 >= TFTWIDTH)  x2 = TFTWIDTH  - 1;
     if(y2 >= TFTHEIGHT) y2 = TFTHEIGHT - 1;
 
@@ -801,7 +801,45 @@ bool TFT_demoscene::begin(void) {
     return false; // Success
 }
 
+void TFT_demoscene::addSpan(uint16_t *addr, int16_t w) {
+    scanline[lineIdx].descriptor[spanIdx].BTCNT.reg    = w * 2;
+    scanline[lineIdx].descriptor[spanIdx].SRCADDR.reg  = (uint32_t)addr+w*2;
+    scanline[lineIdx].descriptor[spanIdx].DESCADDR.reg =
+      (uint32_t)&scanline[lineIdx].descriptor[spanIdx + 1];
+    spanIdx++;
+}
+
 void TFT_demoscene::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
   void (*userCallback)(uint16_t *dest)) {
+
+    if(x1 > x2) { int16_t t = x1; x1 = x2; x2 = t; }
+    if(y1 > y2) { int16_t t = y1; y1 = y2; y2 = t; }
+    if(x1 < 0)          x1 = 0;
+    if(y1 < 0)          y1 = 0;
+    if(x2 >= TFTWIDTH)  x2 = TFTWIDTH  - 1;
+    if(y2 >= TFTHEIGHT) y2 = TFTHEIGHT - 1;
+
+    // This also issues memory write command, keeps CS_ACTIVE & CD_DATA set
+    setAddrWindow(x1, y1, x2, y2);
+
+    pinPeripheral(wrPin, wrPeripheral); // Switch WR pin to timer/CCL
+
+    lineIdx = 0; // Active scanline[] index
+
+    while(y1++ <= y2) {
+        // While prior transfer (if any) occurs...
+        spanIdx = 0;                  // Reset span index counter
+        (*userCallback)(scanline[lineIdx].linebuf); // Sets up new spans
+        scanline[lineIdx].descriptor[spanIdx-1].DESCADDR.reg = 0; // End list
+        while(dma_busy);              // Wait for prior transfer to complete
+        setDmaDescriptorBase(scanline[lineIdx].descriptor);
+        dma_busy = true;
+        dma.startJob();
+        dma.trigger();                // Start new transfer
+        lineIdx = 1 - lineIdx;        // Toggle buffer index
+    }
+    while(dma_busy);                  // Wait for last transfer to complete
+    pinPeripheral(wrPin, PIO_OUTPUT); // Switch WR pin back to GPIO
+    CS_IDLE;                          // Deselect TFT
 }
 

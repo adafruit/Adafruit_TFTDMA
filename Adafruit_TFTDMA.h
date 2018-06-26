@@ -85,16 +85,23 @@ class TFT_segmented : public Adafruit_TFTDMA {
     int16_t         xoffset, yoffset, width, height;
 };
 
-// TFT_demoscene is difficult to explain and isn't fully implemented yet.
-// It uses a constant 11,520 bytes RAM and requires a per-scanline callback.
+// TFT_demoscene requires careful planning.  Display is generated one
+// scanline at a time using a callback which sets up one or more sequential
+// 'spans,' providing a start address for each and a width in pixels, where
+// total span width MUST match the update region width.  This might be good
+// for scrollers, tile engines, anything with lots of canned pixel data.
+// Uses about 11,520 bytes RAM.
 class TFT_demoscene : public Adafruit_TFTDMA {
   public:
     TFT_demoscene(int8_t tc, int8_t reset, int8_t cs, int8_t cd, int8_t rd,
       int8_t wr, int8_t d0, _EPioType periph);
     bool begin(void);
+    void addSpan(uint16_t *addr, int16_t w);
     void update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
       void (*userCallback)(uint16_t *dest));
   private:
+    uint8_t  lineIdx;
+    uint16_t spanIdx;
     struct {
       DmacDescriptor descriptor[TFTWIDTH] __attribute__((aligned(16)));
       uint16_t       linebuf[TFTWIDTH];
