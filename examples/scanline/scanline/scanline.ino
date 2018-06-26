@@ -1,4 +1,4 @@
-// Example for the Adafruit_TFTDMA TFT_segmented object.
+// Example for the Adafruit_TFTDMA TFT_scanline object.
 
 #include <Adafruit_TFTDMA.h>
 
@@ -11,7 +11,7 @@
 #define D0     0       // Data bit 0 pin (MUST be on PORT byte boundary)
 #define PERIPH PIO_CCL // Peripheral type of WR pin (PIO_CCL, PIO_TIMER, etc.)
 
-TFT_demoscene tft(TC, RESET, CS, CD, RD, WR, D0, PERIPH);
+TFT_scanline tft(TC, RESET, CS, CD, RD, WR, D0, PERIPH);
 
 uint32_t startTime, frame = 0;
 

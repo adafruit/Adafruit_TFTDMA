@@ -765,12 +765,12 @@ void TFT_segmented::waitForUpdate(void) {
 
 //--------------------------------------------------------------------------
 
-TFT_demoscene::TFT_demoscene(int8_t tc, int8_t reset, int8_t cs, int8_t cd,
+TFT_scanline::TFT_scanline(int8_t tc, int8_t reset, int8_t cs, int8_t cd,
   int8_t rd, int8_t wr, int8_t d0, _EPioType periph) :
   Adafruit_TFTDMA(tc, reset, cs, cd, rd, wr, d0, periph) {
 }
 
-bool TFT_demoscene::begin(void) {
+bool TFT_scanline::begin(void) {
     if(Adafruit_TFTDMA::begin()) return true;
 
     // Initialize descriptor lists
@@ -801,7 +801,7 @@ bool TFT_demoscene::begin(void) {
     return false; // Success
 }
 
-void TFT_demoscene::addSpan(uint16_t *addr, int16_t w) {
+void TFT_scanline::addSpan(uint16_t *addr, int16_t w) {
     scanline[lineIdx].descriptor[spanIdx].BTCNT.reg    = w * 2;
     scanline[lineIdx].descriptor[spanIdx].SRCADDR.reg  = (uint32_t)addr+w*2;
     scanline[lineIdx].descriptor[spanIdx].DESCADDR.reg =
@@ -809,7 +809,7 @@ void TFT_demoscene::addSpan(uint16_t *addr, int16_t w) {
     spanIdx++;
 }
 
-void TFT_demoscene::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
+void TFT_scanline::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
   void (*userCallback)(uint16_t *dest)) {
 
     if(x1 > x2) { int16_t t = x1; x1 = x2; x2 = t; }
