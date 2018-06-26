@@ -20,7 +20,7 @@ uint32_t startTime, frame = 0;
 
 #define YBOUNCE -2.5
 
-float ballx=20, bally=123, ballvx=0.5, ballvy=YBOUNCE;
+float ballx=20, bally=123, ballvx=0.53, ballvy=YBOUNCE;
 int   balloldx = ballx, balloldy = bally;
 float ballframe = 3;
 uint16_t *buf;
