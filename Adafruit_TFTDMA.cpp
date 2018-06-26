@@ -284,7 +284,7 @@ bool Adafruit_TFTDMA::begin(void) {
 
     CS_ACTIVE;
     writeReg8( ILI9341_SOFTRESET    , 0);
-    delay(50);
+    delay(150);
     writeReg8( ILI9341_DISPLAYOFF   , 0);
     writeReg8( ILI9341_POWERCONTROL1, 0x23);
     writeReg8( ILI9341_POWERCONTROL2, 0x10);
