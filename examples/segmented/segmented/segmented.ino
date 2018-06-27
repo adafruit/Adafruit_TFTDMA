@@ -61,7 +61,7 @@ void setup() {
 #define SEGMENTLINES 16
 uint16_t segmentBuf[2][TFTWIDTH * SEGMENTLINES];
 
-void mySegmentCallback(uint16_t *dest, uint16_t lines) {
+int16_t mySegmentCallback(uint16_t *dest, uint16_t lines, void *data) {
   // Clear screen (erase old boxes)
   tft.fillScreen(0);
 
@@ -69,6 +69,8 @@ void mySegmentCallback(uint16_t *dest, uint16_t lines) {
   for(int i=0; i<3; i++) {
     tft.fillRect(box[i].x, box[i].y, 100, 100, box[i].color);
   }
+
+  return lines;
 }
 
 void loop() {
@@ -110,7 +112,7 @@ void loop() {
 
   // Start new screen update in the background
   tft.update(minx, miny, maxx, maxy,
-    segmentBuf[0], sizeof segmentBuf[0], mySegmentCallback);
+    segmentBuf[0], sizeof segmentBuf[0], mySegmentCallback, NULL);
 
   // Show approximate frame rate
   if(!(++frame & 255)) { // Every 256 frames...

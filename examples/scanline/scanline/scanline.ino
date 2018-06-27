@@ -40,7 +40,7 @@ void setup() {
 
 uint16_t c = 0; // 16-bit color
 
-void myCallback(uint16_t *linebuf) {
+void myCallback(uint16_t *linebuf, void *data) {
   // Add a single span, full width, using linebuf
   tft.addSpan(linebuf, TFTWIDTH);
   // Fill linebuf with solid color
@@ -54,7 +54,7 @@ void myCallback(uint16_t *linebuf) {
 void loop() {
   int i;
 
-  tft.update(0, 0, TFTWIDTH-1, TFTHEIGHT-1, myCallback);
+  tft.update(0, 0, TFTWIDTH-1, TFTHEIGHT-1, myCallback, NULL);
 
   // Show approximate frame rate
   if(!(++frame & 255)) { // Every 256 frames...

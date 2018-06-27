@@ -30,10 +30,10 @@ class Adafruit_TFTDMA {
     void               writeReg8(uint8_t reg, uint8_t value);
     void               writeReg16(uint8_t reg, uint16_t value);
     void               writeReg32(uint8_t reg, uint32_t value);
-    void               setDmaDescriptorBase(void *addr);
     void               setAddrWindow(int16_t x1, int16_t y1,
                                      int16_t x2, int16_t y2);
 #if 0 // Not used:
+    void               setDmaDescriptorBase(void *addr);
     uint32_t           readID(void);
 #endif
 };
@@ -46,19 +46,20 @@ class TFT_framebuffer : public Adafruit_TFTDMA {
     TFT_framebuffer(int8_t tc, int8_t reset, int8_t cs, int8_t cd, int8_t rd,
       int8_t wr, int8_t d0, _EPioType periph);
     bool begin(void);
-    void           update(void);
-    void           waitForUpdate(void);
-    void           sully(int16_t x, int16_t y);
-    uint16_t      *getBuffer(void);
-    inline void    rawPixel(int16_t x, int16_t y, uint16_t color);
-    void           drawPixel(int16_t x, int16_t y, uint16_t color);
-    void           fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
-                     uint16_t color);
-    void           fillScreen(uint16_t color=0);
+    void            update(void);
+    void            waitForUpdate(void);
+    void            sully(int16_t x, int16_t y);
+    uint16_t       *getBuffer(void);
+    inline void     rawPixel(int16_t x, int16_t y, uint16_t color);
+    void            drawPixel(int16_t x, int16_t y, uint16_t color);
+    void            fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
+                      uint16_t color);
+    void            fillScreen(uint16_t color=0);
   private:
-    DmacDescriptor descriptor[TFTHEIGHT] __attribute__((aligned(16)));
-    uint16_t       framebuf[TFTWIDTH * TFTHEIGHT];
-    int16_t        minx, miny, maxx, maxy; // Dirty rect
+    DmacDescriptor *dptr; // Initial allocated DMA descriptor
+    DmacDescriptor  descriptor[TFTHEIGHT] __attribute__((aligned(16)));
+    uint16_t        framebuf[TFTWIDTH * TFTHEIGHT];
+    int16_t         minx, miny, maxx, maxy; // Dirty rect
 };
 
 // TFT_segmented requires more forethought.  Uses less RAM -- only as much
@@ -77,7 +78,8 @@ class TFT_segmented : public Adafruit_TFTDMA {
     void            fillScreen(uint16_t color=0);
     void            update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
                       uint16_t *buf, uint16_t maxSegmentSize,
-                      void (*userCallback)(uint16_t *dest, uint16_t len));
+                      int16_t (*userCallback)(uint16_t *dest, uint16_t len,
+                        void *udPtr), void *userData);
     void            waitForUpdate(void);
   private:
     DmacDescriptor *descriptor;
@@ -98,10 +100,11 @@ class TFT_scanline : public Adafruit_TFTDMA {
     bool begin(void);
     void addSpan(uint16_t *addr, int16_t w);
     void update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
-      void (*userCallback)(uint16_t *dest));
+      void (*userCallback)(uint16_t *dest, void *udPtr), void *userData);
   private:
-    uint8_t  lineIdx;
-    uint16_t spanIdx;
+    uint8_t         lineIdx;
+    uint16_t        spanIdx;
+    DmacDescriptor *dptr; // Initial allocated DMA descriptor
     struct {
       DmacDescriptor descriptor[TFTWIDTH] __attribute__((aligned(16)));
       uint16_t       linebuf[TFTWIDTH];

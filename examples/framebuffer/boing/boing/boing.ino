@@ -143,7 +143,7 @@ void shade(
 
 void setup() {
   Serial.begin(9600);
-  while(!Serial);
+//  while(!Serial);
 
   // DEBUG: for monitoring non-CCL-inverted PWM output:
   //pinMode(MOSI, OUTPUT);
@@ -204,7 +204,6 @@ void loop() {
   ballframe += ballvx * 0.3;
   if(ballframe < 0)        ballframe += 14;
   else if(ballframe >= 14) ballframe -= 14;
-
 
   // This function blocks until it's safe to modify the framebuffer...
   tft.waitForUpdate();

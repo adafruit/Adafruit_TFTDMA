@@ -389,17 +389,6 @@ void Adafruit_TFTDMA::setAddrWindow(
     // Device is left in selected state...follow up with pixel data...
 }
 
-// Bypass Adafruit_ZeroDMA to use our own DMA descriptor list
-void Adafruit_TFTDMA::setDmaDescriptorBase(void *addr) {
-    __disable_irq();
-    __DMB();
-    DMAC->CTRL.reg     = 0; // Disable DMA controller
-    DMAC->BASEADDR.reg = (uint32_t)addr;
-    DMAC->CTRL.reg     = DMAC_CTRL_DMAENABLE | DMAC_CTRL_LVLEN(0xF);
-    __DMB();
-    __enable_irq();
-}
-
 //--------------------------------------------------------------------------
 
 TFT_framebuffer::TFT_framebuffer(int8_t tc, int8_t reset, int8_t cs,
@@ -424,12 +413,10 @@ bool TFT_framebuffer::begin(void) {
         descriptor[d].DSTADDR.reg         = (uint32_t)writePort;
     }
 
-    // The DMA library needs to think it's allocated at least one
-    // valid descriptor, so we do that here (though it's never used)
-    (void)dma.addDescriptor(NULL, NULL, 42, DMA_BEAT_SIZE_BYTE, false, false);
-
-    // Point DMA descriptor base address to our descriptor list
-    setDmaDescriptorBase(descriptor);
+    // The DMA library needs to allocate at least one valid descriptor,
+    // so we do that here.  It's not used in the conventional sense though,
+    // just before a transfer we copy descriptor[0] to this address.
+    dptr = dma.addDescriptor(NULL, NULL, 42, DMA_BEAT_SIZE_BYTE, false, false);
 
     // Clear framebuffer (this also initializes the dirty rect
     // so first update() call always refreshes the full display).
@@ -556,6 +543,12 @@ void TFT_framebuffer::update(void) {
         descriptor[d].DESCADDR.reg = (uint32_t)&descriptor[d + 1];
     }
     descriptor[h].DESCADDR.reg = 0; // End of list
+
+    // Copy first descriptor to the DMA lib's descriptor table
+    memcpy(dptr, &descriptor[0], sizeof(DmacDescriptor));
+    // This is preferable to setting the DMA descriptor base address
+    // as it will play well with any other code using the DMA library
+    // on other channels.
 
     // This also issues memory write command, keeps CS_ACTIVE & CD_DATA set
     setAddrWindow(minx, miny, maxx, maxy);
@@ -686,7 +679,8 @@ void TFT_segmented::fillScreen(uint16_t color) {
 
 void TFT_segmented::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
   uint16_t *segmentBuf, uint16_t maxSegmentBytes,
-  void (*userCallback)(uint16_t *dest, uint16_t len)) {
+  int16_t (*userCallback)(uint16_t *dest, uint16_t len, void *udPtr),
+  void *userData) {
 
     while(dma_busy);
 
@@ -749,10 +743,11 @@ delayMicroseconds(1500);
         if(linesRemaining) {
             if(linesThisSegment > linesRemaining)
                 linesThisSegment = linesRemaining;
-            framebuf = buf[idx];
-            height   = linesThisSegment;
-            (*userCallback)(framebuf, linesThisSegment);
-            yoffset += linesThisSegment;
+            framebuf         = buf[idx];
+            height           = linesThisSegment;
+            linesThisSegment = (*userCallback)(framebuf, linesThisSegment,
+                                               userData);
+            yoffset         += linesThisSegment;
         }
     }
 }
@@ -792,9 +787,10 @@ bool TFT_scanline::begin(void) {
         }
     }
 
-    // The DMA library needs to think it's allocated at least one
-    // valid descriptor, so we do that here (though it's never used)
-    (void)dma.addDescriptor(NULL, NULL, 42, DMA_BEAT_SIZE_BYTE, false, false);
+    // The DMA library needs to allocate at least one valid descriptor,
+    // so we do that here.  It's not used in the conventional sense though,
+    // just before a transfer we copy the first scanline descriptor here.
+    dptr = dma.addDescriptor(NULL, NULL, 42, DMA_BEAT_SIZE_BYTE, false, false);
 
     // DMA descriptor base setting will occur in update()
 
@@ -810,7 +806,7 @@ void TFT_scanline::addSpan(uint16_t *addr, int16_t w) {
 }
 
 void TFT_scanline::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
-  void (*userCallback)(uint16_t *dest)) {
+  void (*userCallback)(uint16_t *dest, void *udPtr), void *userData) {
 
     if(x1 > x2) { int16_t t = x1; x1 = x2; x2 = t; }
     if(y1 > y2) { int16_t t = y1; y1 = y2; y2 = t; }
@@ -829,10 +825,11 @@ void TFT_scanline::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
     while(y1++ <= y2) {
         // While prior transfer (if any) occurs...
         spanIdx = 0;                  // Reset span index counter
-        (*userCallback)(scanline[lineIdx].linebuf); // Sets up new spans
+        (*userCallback)(scanline[lineIdx].linebuf, userData); // Build spans
         scanline[lineIdx].descriptor[spanIdx-1].DESCADDR.reg = 0; // End list
         while(dma_busy);              // Wait for prior transfer to complete
-        setDmaDescriptorBase(scanline[lineIdx].descriptor);
+        // Copy scanline's first descriptor to the DMA lib's descriptor table
+        memcpy(dptr, &scanline[lineIdx].descriptor[0], sizeof(DmacDescriptor));
         dma_busy = true;
         dma.startJob();
         dma.trigger();                // Start new transfer
