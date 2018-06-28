@@ -496,7 +496,9 @@ inline void TFT_framebuffer::rawPixel(int16_t x, int16_t y, uint16_t color) {
 // Set pixel in framebuffer, with clipping & dirty rect update
 void TFT_framebuffer::drawPixel(int16_t x, int16_t y, uint16_t color) {
     if((x >= 0) && (y >= 0) && (x < TFTWIDTH) && (y < TFTHEIGHT)) {
-        color = (color << 8) | (color >> 8);
+#if (TFT_INTERFACE == TFT_INTERFACE_8) || (TFT_INTERFACE == TFT_INTERFACE_SPI)
+        color = __builtin_bswap16(color);
+#endif
         rawPixel(x, y, color);
         sully(x, y);
     }
@@ -551,7 +553,9 @@ void TFT_framebuffer::fillRect(
 
     uint16_t x, y, *ptr;
     ptr   = &framebuf[y1 * TFTWIDTH + x1];
-    color = (color << 8) | (color >> 8); // Endian-swap color
+#if (TFT_INTERFACE == TFT_INTERFACE_8) || (TFT_INTERFACE == TFT_INTERFACE_SPI)
+    color = __builtin_bswap16(color); // Endian-swap color
+#endif
     for(y=0; y<h; y++, ptr += TFTWIDTH) {
         for(x=0; x<w; x++) ptr[x] = color;
     }
@@ -559,7 +563,9 @@ void TFT_framebuffer::fillRect(
 
 // Fill framebuffer with solid color
 void TFT_framebuffer::fillScreen(uint16_t color) {
-    color = (color << 8) | (color >> 8); // Endian-swap color
+#if (TFT_INTERFACE == TFT_INTERFACE_8) || (TFT_INTERFACE == TFT_INTERFACE_SPI)
+    color = __builtin_bswap16(color); // Endian-swap color
+#endif
     // We know framebuffer is 32-bit aligned and an even number
     // of pixels, so we can do some 32-bit wide shenanigans...
     uint32_t *fbuf32 = (uint32_t *)framebuf,
@@ -671,7 +677,9 @@ void TFT_segmented::drawPixel(int16_t x, int16_t y, uint16_t color) {
     x -= xoffset;
     y -= yoffset;
     if((x >= 0) && (y >= 0) && (x < width) && (y < height)) {
-        color = (color << 8) | (color >> 8);
+#if (TFT_INTERFACE == TFT_INTERFACE_8) || (TFT_INTERFACE == TFT_INTERFACE_SPI)
+        color = __builtin_bswap16(color); // Endian-swap color
+#endif
         rawPixel(x, y, color);
     }
 }
@@ -725,7 +733,9 @@ void TFT_segmented::fillRect(
 
     uint16_t x, y, *ptr;
     ptr   = &framebuf[y1 * width + x1];
-    color = (color << 8) | (color >> 8); // Endian-swap color
+#if (TFT_INTERFACE == TFT_INTERFACE_8) || (TFT_INTERFACE == TFT_INTERFACE_SPI)
+    color = __builtin_bswap16(color); // Endian-swap color
+#endif
     for(y=0; y<h; y++, ptr += width) {
         for(x=0; x<w; x++) ptr[x] = color;
     }
@@ -733,7 +743,9 @@ void TFT_segmented::fillRect(
 
 // Fill framebuffer with solid color
 void TFT_segmented::fillScreen(uint16_t color) {
-    color = (color << 8) | (color >> 8); // Endian-swap color
+#if (TFT_INTERFACE == TFT_INTERFACE_8) || (TFT_INTERFACE == TFT_INTERFACE_SPI)
+    color = __builtin_bswap16(color); // Endian-swap color
+#endif
     uint32_t i, pixels = width * height;
 
     // Framebuffer might not be 32-bit aligned,

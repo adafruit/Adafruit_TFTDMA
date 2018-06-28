@@ -60,8 +60,8 @@ void blit2(
   src += sy1 * sw + sx1; // Offset to 1st pixel
   dest = &buf[dy1 * TFTWIDTH + dx1];
 
-  color1 = (color1 << 8) | (color1 >> 8);
-  color2 = (color2 << 8) | (color2 >> 8);
+  color1 = __builtin_bswap16(color1);
+  color2 = __builtin_bswap16(color2);
 
   for(y=0; y<h; y++) {
     for(x=0; x<w; x++) {
@@ -93,8 +93,8 @@ void blit3(
   src += sy1 * sw + sx1; // Offset to 1st pixel
   dest = &buf[dy1 * TFTWIDTH + dx1];
 
-  color1 = (color1 << 8) | (color1 >> 8);
-  color2 = (color2 << 8) | (color2 >> 8);
+  color1 = __builtin_bswap16(color1);
+  color2 = __builtin_bswap16(color2);
 
   for(y=0; y<h; y++) {
     for(x=0; x<w; x++) {
@@ -122,13 +122,13 @@ void shade(
 
   int       x, y;
   uint16_t *dest;
-  uint16_t  cmp = (BGCOLOR << 8) | (BGCOLOR >> 8);
+  uint16_t  cmp = __builtin_bswap16(BGCOLOR);
 
   src += sy1 * sw + sx1; // Offset to 1st pixel
   dest = &buf[dy1 * TFTWIDTH + dx1];
 
-  color1 = (color1 << 8) | (color1 >> 8);
-  color2 = (color2 << 8) | (color2 >> 8);
+  color1 = __builtin_bswap16(color1);
+  color2 = __builtin_bswap16(color2);
 
   for(y=0; y<h; y++) {
     for(x=0; x<w; x++) {
