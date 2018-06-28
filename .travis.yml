@@ -19,7 +19,7 @@ install:
    - arduino --install-library "Adafruit Zero DMA Library"
 
 script:
-   - build_main_platforms
+   - build_m4_platforms
 
 # Generate and deploy documentation
 after_success:
