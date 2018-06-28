@@ -1,7 +1,6 @@
 // Example for the Adafruit_TFTDMA TFT_segmented object.
 
 #include <Adafruit_TFTDMA.h>
-#include "WVariant.h" // PIO_ types are declared here
 
 #define TC     2       // Timer/counter index
 #define RESET -1       // Reset pin (-1 if not used)

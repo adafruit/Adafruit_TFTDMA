@@ -3,7 +3,6 @@
 // but it's easiest to comprehend & use.
 
 #include <Adafruit_TFTDMA.h>
-#include "WVariant.h" // PIO_ types are declared here
 #include "graphics.h"
 
 #define TC     2       // Timer/counter index

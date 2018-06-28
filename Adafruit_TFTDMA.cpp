@@ -133,7 +133,7 @@ Adafruit_TFTDMA::Adafruit_TFTDMA(int8_t tc, int8_t reset, int8_t cs,
   int8_t cd, int8_t rd, int8_t wr, int8_t d0, _EPioType periph) {
 
     tcNum = -1; // Init to -1 to indicate constructor trouble
-    if((tc < 0) || (tc >= NUM_TIMERS)) return; // Invalid TC number!
+    if((tc < 0) || (tc >= (int8_t)NUM_TIMERS)) return; // Invalid TC number!
     uint8_t dBit = g_APinDescription[d0].ulPin; // d0 bit # in PORT
 #if TFT_INTERFACE == TFT_INTERFACE_8
     if(dBit &  7) return; // d0 is not byte-aligned in PORT!
@@ -236,9 +236,9 @@ bool Adafruit_TFTDMA::begin(void) {
         if((g_APinDescription[i].ulPort == portNum ) &&
            (g_APinDescription[i].ulPin  >= dBit    ) &&
 #if TFT_INTERFACE == TFT_INTERFACE_8
-           (g_APinDescription[i].ulPin  <= dBit +  7)) {
+           (g_APinDescription[i].ulPin  <= (uint32_t)(dBit +  7))) {
 #elif TFT_INTERFACE == TFT_INTERFACE_16
-           (g_APinDescription[i].ulPin  <= dBit + 15)) {
+           (g_APinDescription[i].ulPin  <= (uint32_t)(dBit + 15))) {
 #endif
             pinMode(i, OUTPUT); digitalWrite(i, LOW);
         }
