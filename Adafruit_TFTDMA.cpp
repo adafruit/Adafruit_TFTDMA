@@ -1,63 +1,94 @@
+/*!
+ * @file Adafruit_TFTDMA.cpp
+ *
+ * @mainpage SAMD51 DMA-driven ILI9341 display library.
+ *
+ * @section intro_sec Introduction
+ *
+ * This is the documentation for Adafruit's SAMD51 DMA-driven ILI9341
+ * library.  It is designed specifically for this microcontroller and
+ * display combo, using the display's parallel interface.
+ *
+ * Adafruit invests time and resources providing this open source code,
+ * please support Adafruit and open-source hardware by purchasing
+ * products from Adafruit!
+ *
+ * @section dependencies Dependencies
+ *
+ * This library depends on
+ * <a href="https://github.com/adafruit/Adafruit_ZeroDMA">Adafruit_ZeroDMA</a>
+ * being present on your system. Please make sure you have installed the
+ * latest version before using this library.
+ *
+ * @section author Author
+ *
+ * Written by Phil "PaintYourDragon" Burgess for Adafruit Industries.
+ *
+ * @section license License
+ *
+ * BSD license, all text here must be included in any redistribution.
+ */
+
 #include "Adafruit_TFTDMA.h"
 #include "wiring_private.h" // pinPeripheral() function
 
 //--------------------------------------------------------------------------
 
-#define ILI9341_SOFTRESET     0x01
-#define ILI9341_SLEEPOUT      0x11
-#define ILI9341_DISPLAYOFF    0x28
-#define ILI9341_DISPLAYON     0x29
-#define ILI9341_COLADDRSET    0x2A
-#define ILI9341_PAGEADDRSET   0x2B
-#define ILI9341_MEMORYWRITE   0x2C
-#define ILI9341_MADCTL        0x36
-#define ILI9341_PIXELFORMAT   0x3A
-#define ILI9341_FRAMECONTROL  0xB1
-#define ILI9341_DISPLAYFUNC   0xB6
-#define ILI9341_ENTRYMODE     0xB7
-#define ILI9341_POWERCONTROL1 0xC0
-#define ILI9341_POWERCONTROL2 0xC1
-#define ILI9341_VCOMCONTROL1  0xC5
-#define ILI9341_VCOMCONTROL2  0xC7
+#define ILI9341_SOFTRESET     0x01  ///< Software reset
+#define ILI9341_SLEEPOUT      0x11  ///< Exit sleep mode
+#define ILI9341_DISPLAYOFF    0x28  ///< Display OFF
+#define ILI9341_DISPLAYON     0x29  ///< Display ON
+#define ILI9341_COLADDRSET    0x2A  ///< Column Address Set
+#define ILI9341_PAGEADDRSET   0x2B  ///< Page Address Set
+#define ILI9341_MEMORYWRITE   0x2C  ///< Memory Write
+#define ILI9341_MADCTL        0x36  ///< Memory Access Control
+#define ILI9341_PIXELFORMAT   0x3A  ///< COLMOD / Pixel Format Set
+#define ILI9341_FRAMECONTROL  0xB1  ///< Frame Rate Control
+#define ILI9341_DISPLAYFUNC   0xB6  ///< Display Function Control
+#define ILI9341_ENTRYMODE     0xB7  ///< Entry Mode Set
+#define ILI9341_POWERCONTROL1 0xC0  ///< Power Control 1
+#define ILI9341_POWERCONTROL2 0xC1  ///< Power Control 2
+#define ILI9341_VCOMCONTROL1  0xC5  ///< VCOM Control 1
+#define ILI9341_VCOMCONTROL2  0xC7  ///< VCOM Control 2
 
-#define ILI9341_MADCTL_MY     0x80
-#define ILI9341_MADCTL_MX     0x40
-#define ILI9341_MADCTL_MV     0x20
-#define ILI9341_MADCTL_ML     0x10
-#define ILI9341_MADCTL_RGB    0x00
-#define ILI9341_MADCTL_BGR    0x08
-#define ILI9341_MADCTL_MH     0x04
+#define ILI9341_MADCTL_MY     0x80  ///< Row Address Order
+#define ILI9341_MADCTL_MX     0x40  ///< Column Address Order
+#define ILI9341_MADCTL_MV     0x20  ///< Row/Column Exchange
+#define ILI9341_MADCTL_ML     0x10  ///< Vertical Regresh Order
+#define ILI9341_MADCTL_RGB    0x00  ///< RGB Order
+#define ILI9341_MADCTL_BGR    0x08  ///< BGR Order
+#define ILI9341_MADCTL_MH     0x04  ///< Horizontal Regresh Order
 
 // MADCTL settings for landscape and 180-rotated landscape
 #define ROTATION1 ILI9341_MADCTL_MX | ILI9341_MADCTL_MY | \
-                  ILI9341_MADCTL_MV | ILI9341_MADCTL_BGR
-#define ROTATION2 ILI9341_MADCTL_MV | ILI9341_MADCTL_BGR
+                  ILI9341_MADCTL_MV | ILI9341_MADCTL_BGR  ///< Landscape
+#define ROTATION2 ILI9341_MADCTL_MV | ILI9341_MADCTL_BGR  ///< Rotated 180
 
-#define CS_ACTIVE  *csPortClr    = csPinMask
-#define CS_IDLE    *csPortSet    = csPinMask
-#define CD_COMMAND *cdPortClr    = cdPinMask
-#define CD_DATA    *cdPortSet    = cdPinMask
-#define RD_ACTIVE  *rdPortClr    = rdPinMask
-#define RD_IDLE    *rdPortSet    = rdPinMask
-#define WR_ACTIVE  *wrPortActive = wrPinMask
-#define WR_IDLE    *wrPortIdle   = wrPinMask
+#define CS_ACTIVE  *csPortClr    = csPinMask  ///< Chip Select active
+#define CS_IDLE    *csPortSet    = csPinMask  ///< Chip Select idle
+#define CD_COMMAND *cdPortClr    = cdPinMask  ///< CD = Command
+#define CD_DATA    *cdPortSet    = cdPinMask  ///< CD = Data
+#define RD_ACTIVE  *rdPortClr    = rdPinMask  ///< Read Strobe active
+#define RD_IDLE    *rdPortSet    = rdPinMask  ///< Read Strobe idle
+#define WR_ACTIVE  *wrPortActive = wrPinMask  ///< Write Strobe active
+#define WR_IDLE    *wrPortIdle   = wrPinMask  ///< Write Strobe idle
 
-#define WR_STROBE { WR_ACTIVE; WR_IDLE; }
-#define write8(d) { *writePort=(d); WR_STROBE; }
+#define WR_STROBE { WR_ACTIVE; WR_IDLE; }  ///< Toggle write strobe once
+#define write8(d) { *writePort=(d); WR_STROBE; }  ///< 8-bit write-and-strobe
 
 #if TFT_INTERFACE == TFT_INTERFACE_8
- #define setWriteDir() { *dirSet = 0xFF; }
- #define setReadDir()  { *dirClr = 0xFF; }
+ #define setWriteDir() { *dirSet = 0xFF; }  ///< Set PORT for output
+ #define setReadDir()  { *dirClr = 0xFF; }  ///< Set PORT for input
  // BE CAREFUL when using write16() -- it's a macro, so avoid things like
  // write16(*foo++) which will expand 2X and have unexpected consequences.
- #define write16(d)    {*writePort=(d>>8);WR_STROBE;*writePort=(d);WR_STROBE;}
+ #define write16(d)    {*writePort=(d>>8);WR_STROBE;*writePort=(d);WR_STROBE;}  ///< 16-bit write-and-strobe
 #elif TFT_INTERFACE == TFT_INTERFACE_16
- #define setWriteDir() { *dirSet = 0xFFFF; }
- #define setReadDir()  { *dirClr = 0xFFFF; }
- #define write16(d)    { *writePort=(d); WR_STROBE; }
+ #define setWriteDir() { *dirSet = 0xFFFF; }  ///< Set PORT for output
+ #define setReadDir()  { *dirClr = 0xFFFF; }  ///< Set PORT for input
+ #define write16(d)    { *writePort=(d); WR_STROBE; }  ///< 16-bit write-and-strobe
 #endif
 
-#if 0 // Not currently used (was in readID() function, also not used)
+#if 0 // Not currently used (was in readID() function, which is also not used)
 #define read8(result) {   \
     RD_ACTIVE;            \
     delayMicroseconds(1); \
@@ -88,10 +119,10 @@ static const struct {
   { TC7, TC7_GCLK_ID, EVSYS_ID_USER_TC7_EVU }
 #endif
 };
-#define NUM_TIMERS (sizeof tcList / sizeof tcList[0])
+#define NUM_TIMERS (sizeof tcList / sizeof tcList[0])  ///< Number of available timer/counter peripherals
 
+// DMA transfer-in-progress indicator and callback
 static volatile bool dma_busy = false;
-
 static void dma_callback(Adafruit_ZeroDMA *dma) {
     dma_busy = false;
 }
@@ -128,12 +159,17 @@ Adafruit_TFTDMA::Adafruit_TFTDMA(int8_t tc, int8_t reset, int8_t cs,
         csPinMask = 0;
         csPortSet = csPortClr = NULL;
     }
+    if(rdPin >= 0) { // If read-strobe pin is specified...
+        rdPinMask    = digitalPinToBitMask(rd);
+        rdPortSet    = &(PORT->Group[g_APinDescription[rd].ulPort].OUTSET.reg);
+        rdPortClr    = &(PORT->Group[g_APinDescription[rd].ulPort].OUTCLR.reg);
+    } else {
+        rdPinMask = 0;
+        rdPortSet = rdPortClr = NULL;
+    }
     cdPinMask    = digitalPinToBitMask(cd); // And bitmasks as well
     cdPortSet    = &(PORT->Group[g_APinDescription[cd].ulPort].OUTSET.reg);
     cdPortClr    = &(PORT->Group[g_APinDescription[cd].ulPort].OUTCLR.reg);
-    rdPinMask    = digitalPinToBitMask(rd);
-    rdPortSet    = &(PORT->Group[g_APinDescription[rd].ulPort].OUTSET.reg);
-    rdPortClr    = &(PORT->Group[g_APinDescription[rd].ulPort].OUTCLR.reg);
     wrPinMask    = digitalPinToBitMask(wr);
     wrPeripheral = periph;
     if(periph == PIO_CCL) { // WR pin is using CCL to invert PWM (but not GPIO)
@@ -169,7 +205,7 @@ bool Adafruit_TFTDMA::begin(void) {
 
     // INITIALIZE DMA (descriptors, etc. are done in subclass) -------------
 
-    if(dma.allocate() != DMA_STATUS_OK) return true;
+    if(dma.allocate() != DMA_STATUS_OK) return true;    // Allocate channel
 
     int dmaChannel = dma.getChannel();
     DMAC->Channel[dmaChannel].CHEVCTRL.bit.EVOE    = 1; // Enable event output
@@ -184,13 +220,15 @@ bool Adafruit_TFTDMA::begin(void) {
     if(csPin >= 0) {
         pinMode(csPin, OUTPUT); digitalWrite(csPin, HIGH);
     }
+    if(rdPin >= 0) {
+        pinMode(rdPin, OUTPUT); digitalWrite(rdPin, HIGH);
+    }
     pinMode(cdPin, OUTPUT); digitalWrite(cdPin, HIGH); // All idle
-    pinMode(rdPin, OUTPUT); digitalWrite(rdPin, HIGH);
     pinMode(wrPin, OUTPUT); digitalWrite(wrPin, HIGH);
 
     // Initialize data pins.  We were only passed d0, so scan the
     // pin description list looking for the other seven pins.
-    // They'll be on the same PORT, and within the next 7 bits
+    // They'll be on the same PORT, and within the next 7 (or 15) bits
     // (because we need to write to a contiguous PORT byte).
     uint8_t portNum = g_APinDescription[d0Pin].ulPort, // d0 PORT #
             dBit    = g_APinDescription[d0Pin].ulPin;  // d0 bit # in PORT
@@ -208,7 +246,7 @@ bool Adafruit_TFTDMA::begin(void) {
 
     // CONFIGURE TIMER/COUNTER (used for write strobe pulses) --------------
 
-#if 0 // DISABLED - ALREADY DONE BY ARDUINO INIT CODE BY DEFAULT
+#if 0 // DISABLED - THIS IS ALREADY DONE BY ARDUINO INIT CODE BY DEFAULT
     // Config GCLK0 for 120 MHz
     GCLK_GENCTRL_Type genctrl;
     genctrl.bit.SRC      = GCLK_GENCTRL_SRC_DPLL0_Val;
@@ -773,7 +811,7 @@ void TFT_segmented::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
 // (long descriptor chain) rather than multiple small triggerings.
 // If so -- determine minimal trigger time and compare micros()
 // against prior time so it's only delaying as much as required.
-delayMicroseconds(1500);
+delayMicroseconds(1600);
 
         // Calculate size of next segment, render if needed
         if(linesRemaining) {

@@ -3,6 +3,7 @@
 // but it's easiest to comprehend & use.
 
 #include <Adafruit_TFTDMA.h>
+#include "wiring_private.h"
 
 #define TC     2       // Timer/counter index
 #define RESET -1       // Reset pin (-1 if not used)
