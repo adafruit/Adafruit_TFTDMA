@@ -264,6 +264,24 @@ class TFT_framebuffer : public Adafruit_TFTDMA {
     */
     uint16_t       *getBuffer(void);
     /*!
+      @brief   Get the framebuffer's current dirty rectangle, if any.
+               This may be helpful if an application finds it easier or more
+               efficient to simply erase a whole bounding area rather than
+               multiple small elements within.
+      @param   x1  Pointer to signed 16-bit type to hold LEFT edge of dirty
+                   rectangle, if set (else will be >= TFTWIDTH).
+      @param   y1  Pointer to signed 16-bit type to hold TOP edge of dirty
+                   rectangle, if set (else will be >= TFTHEIGHT).
+      @param   x2  Pointer to signed 16-bit type to hold RIGHT edge of dirty
+                   rectangle, if set (else will be -1).
+      @param   y2  Pointer to signed 16-bit type to hold BOTTOM edge of
+                   dirty rectangle, if set (else will be -1).
+      @return  true if dirty rectangle exists and is valid, false if no
+               rectangle has been set (e.g. immediately after update()).
+    */
+    bool            getDirtyRect(int16_t *x1, int16_t *y1,
+                                 int16_t *x2, int16_t *y2);
+    /*!
       @brief   Lowest-level pixel-setting operation.  Sets color of pixel
                at a given coordinate.  Does NOT provide clipping, and pixel
                color must already be endian-adjusted if needed to match

@@ -457,7 +457,12 @@ TFT_framebuffer::TFT_framebuffer(int8_t tc, int8_t reset, int8_t cs,
 bool TFT_framebuffer::begin(void) {
     if(Adafruit_TFTDMA::begin()) return true;
 
-    // Initialize descriptor list (one per scanline)
+    // Initialize descriptor list (one per scanline).  Per-scanline
+    // descriptors allows partial screen updates to be made as a single
+    // DMA transaction; when updating just a section of the screen, the
+    // data being issued is not contiguous (scanlines in RAM are contiguous,
+    // but we're sending partial scanlines), the descriptors link these all
+    // together for direct transmission, no per-line memcpy calls required).
     for(int d=0; d<TFTHEIGHT; d++) {
         // No need to seSRCADDR, DESCADDR or BTCNT -- done in update()
         descriptor[d].BTCTRL.bit.VALID    = true;
@@ -642,6 +647,15 @@ void TFT_framebuffer::waitForUpdate(void) {
 
 uint16_t *TFT_framebuffer::getBuffer(void) {
     return framebuf;
+}
+
+bool TFT_framebuffer::getDirtyRect(int16_t *x1, int16_t *y1,
+  int16_t *x2, int16_t *y2) {
+    *x1 = minx;
+    *y1 = miny;
+    *x2 = maxx;
+    *y2 = maxy;
+    return (maxx >= minx);
 }
 
 //--------------------------------------------------------------------------
@@ -854,7 +868,8 @@ TFT_scanline::TFT_scanline(int8_t tc, int8_t reset, int8_t cs, int8_t cd,
 bool TFT_scanline::begin(void) {
     if(Adafruit_TFTDMA::begin()) return true;
 
-    // Initialize descriptor lists
+    // Initialize descriptor lists (see TFT_framebuffer begin() for an
+    // explanation how and why descriptor lists are used).
     for(uint8_t s=0; s<2; s++) {
         for(int d=0; d<TFTWIDTH; d++) {
             // No need to set SRCADDR, DESCADDR or BTCNT -- done later
