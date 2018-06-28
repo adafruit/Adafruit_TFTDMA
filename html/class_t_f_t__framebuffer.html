@@ -102,6 +102,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="clas
 <tr class="memitem:a11b4785d18cd92d16822454fb4607b95"><td class="memItemLeft" align="right" valign="top">uint16_t *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_t_f_t__framebuffer.html#a11b4785d18cd92d16822454fb4607b95">getBuffer</a> (void)</td></tr>
 <tr class="memdesc:a11b4785d18cd92d16822454fb4607b95"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the base address of the framebuffer.  <a href="#a11b4785d18cd92d16822454fb4607b95">More...</a><br /></td></tr>
 <tr class="separator:a11b4785d18cd92d16822454fb4607b95"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae754bda0546d45f1647ff442d82e2c00"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_t_f_t__framebuffer.html#ae754bda0546d45f1647ff442d82e2c00">getDirtyRect</a> (int16_t *x1, int16_t *y1, int16_t *x2, int16_t *y2)</td></tr>
+<tr class="memdesc:ae754bda0546d45f1647ff442d82e2c00"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the framebuffer's current dirty rectangle, if any. This may be helpful if an application finds it easier or more efficient to simply erase a whole bounding area rather than multiple small elements within.  <a href="#ae754bda0546d45f1647ff442d82e2c00">More...</a><br /></td></tr>
+<tr class="separator:ae754bda0546d45f1647ff442d82e2c00"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aee511fdc49c7dd1a261012889018bf24"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_t_f_t__framebuffer.html#aee511fdc49c7dd1a261012889018bf24">rawPixel</a> (int16_t x, int16_t y, uint16_t color)</td></tr>
 <tr class="memdesc:aee511fdc49c7dd1a261012889018bf24"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lowest-level pixel-setting operation. Sets color of pixel at a given coordinate. Does NOT provide clipping, and pixel color must already be endian-adjusted if needed to match format needed by ILI9341 (MSB first). Dirty rectangle is not updated.  <a href="#aee511fdc49c7dd1a261012889018bf24">More...</a><br /></td></tr>
 <tr class="separator:aee511fdc49c7dd1a261012889018bf24"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -398,6 +401,58 @@ Adafruit_ZeroDMA&#160;</td><td class="memItemRight" valign="bottom"><a class="el
 
 <p>Get the base address of the framebuffer. </p>
 <dl class="section return"><dt>Returns</dt><dd>Pointer to framebuffer data; contiguous row-major TFTWIDTH x TFTHEIGHT uint16_t values. </dd></dl>
+
+</div>
+</div>
+<a id="ae754bda0546d45f1647ff442d82e2c00"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae754bda0546d45f1647ff442d82e2c00">&#9670;&nbsp;</a></span>getDirtyRect()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool TFT_framebuffer::getDirtyRect </td>
+          <td>(</td>
+          <td class="paramtype">int16_t *&#160;</td>
+          <td class="paramname"><em>x1</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int16_t *&#160;</td>
+          <td class="paramname"><em>y1</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int16_t *&#160;</td>
+          <td class="paramname"><em>x2</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int16_t *&#160;</td>
+          <td class="paramname"><em>y2</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Get the framebuffer's current dirty rectangle, if any. This may be helpful if an application finds it easier or more efficient to simply erase a whole bounding area rather than multiple small elements within. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">x1</td><td>Pointer to signed 16-bit type to hold LEFT edge of dirty rectangle, if set (else will be &gt;= TFTWIDTH). </td></tr>
+    <tr><td class="paramname">y1</td><td>Pointer to signed 16-bit type to hold TOP edge of dirty rectangle, if set (else will be &gt;= TFTHEIGHT). </td></tr>
+    <tr><td class="paramname">x2</td><td>Pointer to signed 16-bit type to hold RIGHT edge of dirty rectangle, if set (else will be -1). </td></tr>
+    <tr><td class="paramname">y2</td><td>Pointer to signed 16-bit type to hold BOTTOM edge of dirty rectangle, if set (else will be -1). </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if dirty rectangle exists and is valid, false if no rectangle has been set (e.g. immediately after <a class="el" href="class_t_f_t__framebuffer.html#a39e28faf7fcedee8c8a5ab1e21444cd7" title="Refreshes the display based on the current &#39;dirty rectangle&#39; bounds set by other graphics functions...">update()</a>). </dd></dl>
 
 </div>
 </div>
