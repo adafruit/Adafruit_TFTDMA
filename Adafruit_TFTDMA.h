@@ -125,7 +125,7 @@ class Adafruit_TFTDMA {
     int8_t             wrPin;        ///< Index of WR pin
     int8_t             resetPin;     ///< Index of RESET pin (or -1)
     int8_t             d0Pin;        ///< Index of data bit 0 pin
-    uint8_t            tcNum;        ///< Timer/Counter number
+    int8_t             tcNum;        ///< Timer/Counter number
     _EPioType          wrPeripheral; ///< WR strobe peripheral type
     Adafruit_ZeroDMA   dma;          ///< DMA instance
     /*!

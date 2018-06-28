@@ -175,7 +175,6 @@ void setup() {
 }
 
 void loop() {
-  int i;
 
   // Prior DMA transfer must complete before modifying framebuffer.
   // We can do stuff in the meantime, such as game logic, or in this

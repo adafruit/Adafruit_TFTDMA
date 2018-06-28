@@ -232,7 +232,7 @@ bool Adafruit_TFTDMA::begin(void) {
     // (because we need to write to a contiguous PORT byte).
     uint8_t portNum = g_APinDescription[d0Pin].ulPort, // d0 PORT #
             dBit    = g_APinDescription[d0Pin].ulPin;  // d0 bit # in PORT
-    for(int i=0; i<PINS_COUNT; i++) {
+    for(uint8_t i=0; i<PINS_COUNT; i++) {
         if((g_APinDescription[i].ulPort == portNum ) &&
            (g_APinDescription[i].ulPin  >= dBit    ) &&
 #if TFT_INTERFACE == TFT_INTERFACE_8
