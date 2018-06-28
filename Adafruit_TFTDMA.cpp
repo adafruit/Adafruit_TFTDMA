@@ -718,7 +718,11 @@ void TFT_segmented::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
     if(y2 >= TFTHEIGHT) y2 = TFTHEIGHT - 1;
 
     width = x2 - x1 + 1; // Width, in pixels, of update area & segment buffer
+#if TFT_INTERFACE == TFT_INTERFACE_8
     int16_t maxSegmentLines = (maxSegmentBytes / 2) / width; // Max lines/pass
+#elif TFT_INTERFACE == TFT_INTERFACE_16
+    int16_t maxSegmentLines =  maxSegmentBytes      / width; // Max lines/pass
+#endif
     if(maxSegmentLines <= 0) return; // Inadequate buffer size!
 
     // This also issues memory write command, keeps CS_ACTIVE & CD_DATA set
