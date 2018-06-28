@@ -31,7 +31,7 @@ int16_t minx, miny, maxx, maxy;
 
 void setup() {
   Serial.begin(9600);
-  while(!Serial);
+//  while(!Serial);
 
   // DEBUG: for monitoring non-CCL-inverted PWM output:
   //pinMode(MOSI, OUTPUT);

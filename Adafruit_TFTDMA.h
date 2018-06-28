@@ -1,8 +1,15 @@
 #ifndef _ADAFRUIT_TFTDMA_H_
 #define _ADAFRUIT_TFTDMA_H_
 
-#define TFTWIDTH  320
-#define TFTHEIGHT 240
+#define TFT_INTERFACE_8   0 // 8-bit parallel interface
+#define TFT_INTERFACE_16  1 // 16-bit parallel - work-in-progress
+#define TFT_INTERFACE_SPI 2 // SPI - totally not implemented
+
+// Display interface must be defined at compile-time.  Differences
+// are sufficiently drastic that it's not very practical at run-time.
+#define TFT_INTERFACE TFT_INTERFACE_8
+#define TFTWIDTH      320
+#define TFTHEIGHT     240
 
 #include <Adafruit_ZeroDMA.h>
 #include "utility/dma.h"
@@ -15,10 +22,14 @@
 class Adafruit_TFTDMA {
   public:
     Adafruit_TFTDMA(int8_t tc, int8_t reset, int8_t cs, int8_t cd, int8_t rd,
-      int8_t wr, int8_t d0, _EPioType periph);
+                    int8_t wr, int8_t d0, _EPioType periph);
     bool begin(void);
   protected:
+#if TFT_INTERFACE == TFT_INTERFACE_8
     volatile uint8_t  *writePort, *readPort, *dirSet, *dirClr;
+#elif TFT_INTERFACE == TFT_INTERFACE_16
+    volatile uint16_t *writePort, *readPort, *dirSet, *dirClr;
+#endif
     volatile uint32_t *cdPortSet, *wrPortIdle  , *rdPortSet, *csPortSet,
                       *cdPortClr, *wrPortActive, *rdPortClr, *csPortClr;
     uint32_t           cdPinMask,  wrPinMask   ,  rdPinMask,  csPinMask;
@@ -33,7 +44,6 @@ class Adafruit_TFTDMA {
     void               setAddrWindow(int16_t x1, int16_t y1,
                                      int16_t x2, int16_t y2);
 #if 0 // Not used:
-    void               setDmaDescriptorBase(void *addr);
     uint32_t           readID(void);
 #endif
 };
@@ -44,7 +54,7 @@ class Adafruit_TFTDMA {
 class TFT_framebuffer : public Adafruit_TFTDMA {
   public:
     TFT_framebuffer(int8_t tc, int8_t reset, int8_t cs, int8_t cd, int8_t rd,
-      int8_t wr, int8_t d0, _EPioType periph);
+                    int8_t wr, int8_t d0, _EPioType periph);
     bool begin(void);
     void            update(void);
     void            waitForUpdate(void);
@@ -53,7 +63,7 @@ class TFT_framebuffer : public Adafruit_TFTDMA {
     inline void     rawPixel(int16_t x, int16_t y, uint16_t color);
     void            drawPixel(int16_t x, int16_t y, uint16_t color);
     void            fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
-                      uint16_t color);
+                             uint16_t color);
     void            fillScreen(uint16_t color=0);
   private:
     DmacDescriptor *dptr; // Initial allocated DMA descriptor
@@ -69,17 +79,19 @@ class TFT_framebuffer : public Adafruit_TFTDMA {
 class TFT_segmented : public Adafruit_TFTDMA {
   public:
     TFT_segmented(int8_t tc, int8_t reset, int8_t cs, int8_t cd, int8_t rd,
-      int8_t wr, int8_t d0, _EPioType periph);
+                  int8_t wr, int8_t d0, _EPioType periph);
     bool begin(void);
     inline void     rawPixel(int16_t x, int16_t y, uint16_t color);
     void            drawPixel(int16_t x, int16_t y, uint16_t color);
     void            fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
-                      uint16_t color);
+                             uint16_t color);
     void            fillScreen(uint16_t color=0);
     void            update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
-                      uint16_t *buf, uint16_t maxSegmentSize,
-                      int16_t (*userCallback)(uint16_t *dest, uint16_t len,
-                        void *udPtr), void *userData);
+                           uint16_t *buf, uint16_t maxSegmentSize,
+                           int16_t (*userCallback)(uint16_t *dest,
+                                                   uint16_t len,
+                                                   void *udPtr),
+                                                   void *userData);
     void            waitForUpdate(void);
   private:
     DmacDescriptor *descriptor;
@@ -96,11 +108,12 @@ class TFT_segmented : public Adafruit_TFTDMA {
 class TFT_scanline : public Adafruit_TFTDMA {
   public:
     TFT_scanline(int8_t tc, int8_t reset, int8_t cs, int8_t cd, int8_t rd,
-      int8_t wr, int8_t d0, _EPioType periph);
+                 int8_t wr, int8_t d0, _EPioType periph);
     bool begin(void);
     void addSpan(uint16_t *addr, int16_t w);
     void update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
-      void (*userCallback)(uint16_t *dest, void *udPtr), void *userData);
+                void (*userCallback)(uint16_t *dest, void *udPtr),
+                void *userData);
   private:
     uint8_t         lineIdx;
     uint16_t        spanIdx;

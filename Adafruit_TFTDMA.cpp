@@ -42,18 +42,28 @@
 #define WR_ACTIVE  *wrPortActive = wrPinMask
 #define WR_IDLE    *wrPortIdle   = wrPinMask
 
-#define setWriteDir() { *dirSet = 0xFF; }
-#define setReadDir()  { *dirClr = 0xFF; }
-
 #define WR_STROBE { WR_ACTIVE; WR_IDLE; }
-
 #define write8(d) { *writePort=(d); WR_STROBE; }
 
+#if TFT_INTERFACE == TFT_INTERFACE_8
+ #define setWriteDir() { *dirSet = 0xFF; }
+ #define setReadDir()  { *dirClr = 0xFF; }
+ // BE CAREFUL when using write16() -- it's a macro, so avoid things like
+ // write16(*foo++) which will expand 2X and have unexpected consequences.
+ #define write16(d)    {*writePort=(d>>8);WR_STROBE;*writePort=(d);WR_STROBE;}
+#elif TFT_INTERFACE == TFT_INTERFACE_16
+ #define setWriteDir() { *dirSet = 0xFFFF; }
+ #define setReadDir()  { *dirClr = 0xFFFF; }
+ #define write16(d)    { *writePort=(d); WR_STROBE; }
+#endif
+
+#if 0 // Not currently used (was in readID() function, also not used)
 #define read8(result) {   \
     RD_ACTIVE;            \
     delayMicroseconds(1); \
     result = *readPort;   \
     RD_IDLE; }
+#endif
 
 // Timer/counter info by index #
 static const struct {
@@ -94,7 +104,11 @@ Adafruit_TFTDMA::Adafruit_TFTDMA(int8_t tc, int8_t reset, int8_t cs,
     tcNum = -1; // Init to -1 to indicate constructor trouble
     if((tc < 0) || (tc >= NUM_TIMERS)) return; // Invalid TC number!
     uint8_t dBit = g_APinDescription[d0].ulPin; // d0 bit # in PORT
-    if(dBit & 7) return; // d0 is not byte-aligned in PORT!
+#if TFT_INTERFACE == TFT_INTERFACE_8
+    if(dBit &  7) return; // d0 is not byte-aligned in PORT!
+#elif TFT_INTERFACE == TFT_INTERFACE_16
+    if(dBit & 15) return; // d0 is not halfword-aligned in PORT!
+#endif
 
     tcNum    = tc;    // Save timer/counter #
     csPin    = cs;    // Save chip select pin (-1 if unused)
@@ -132,13 +146,22 @@ Adafruit_TFTDMA::Adafruit_TFTDMA(int8_t tc, int8_t reset, int8_t cs,
         wrPortActive = &(PORT->Group[g_APinDescription[wr].ulPort].OUTSET.reg);
     }
 
+    PortGroup *p = (&(PORT->Group[g_APinDescription[d0].ulPort]));
+#if TFT_INTERFACE == TFT_INTERFACE_8
     // Get pointers to PORT write/read/dir bytes within 32-bit PORT
-    uint8_t    offset = dBit / 8; // d[7:0] byte # within PORT
-    PortGroup *p      = (&(PORT->Group[g_APinDescription[d0].ulPort]));
+    uint8_t offset = dBit / 8; // d[7:0] byte # within PORT
     writePort = (volatile uint8_t *)&(p->OUT.reg)    + offset;
     readPort  = (volatile uint8_t *)&(p->IN.reg)     + offset;
     dirSet    = (volatile uint8_t *)&(p->DIRSET.reg) + offset;
     dirClr    = (volatile uint8_t *)&(p->DIRCLR.reg) + offset;
+#elif TFT_INTERFACE == TFT_INTERFACE_16
+    // Get pointers to PORT write/read/dir halfwords within 32-bit PORT
+    uint8_t offset = dBit / 16; // d[15:0] word # within PORT
+    writePort = (volatile uint16_t *)&(p->OUT.reg)    + offset;
+    readPort  = (volatile uint16_t *)&(p->IN.reg)     + offset;
+    dirSet    = (volatile uint16_t *)&(p->DIRSET.reg) + offset;
+    dirClr    = (volatile uint16_t *)&(p->DIRCLR.reg) + offset;
+#endif
 }
 
 bool Adafruit_TFTDMA::begin(void) {
@@ -174,7 +197,11 @@ bool Adafruit_TFTDMA::begin(void) {
     for(int i=0; i<PINS_COUNT; i++) {
         if((g_APinDescription[i].ulPort == portNum ) &&
            (g_APinDescription[i].ulPin  >= dBit    ) &&
-           (g_APinDescription[i].ulPin  <= dBit + 7)) {
+#if TFT_INTERFACE == TFT_INTERFACE_8
+           (g_APinDescription[i].ulPin  <= dBit +  7)) {
+#elif TFT_INTERFACE == TFT_INTERFACE_16
+           (g_APinDescription[i].ulPin  <= dBit + 15)) {
+#endif
             pinMode(i, OUTPUT); digitalWrite(i, LOW);
         }
     }
@@ -348,8 +375,7 @@ void Adafruit_TFTDMA::writeReg16(uint8_t reg, uint16_t value) {
     CD_COMMAND;
     write8(reg);
     CD_DATA;
-    write8(value >> 8);
-    write8(value);
+    write16(value);
 }
 
 // Not used?
@@ -357,10 +383,8 @@ void Adafruit_TFTDMA::writeReg32(uint8_t reg, uint32_t value) {
     CD_COMMAND;
     write8(reg);
     CD_DATA;
-    write8(value >> 24);
-    write8(value >> 16);
-    write8(value >>  8);
-    write8(value);
+    write16(value >> 16);
+    write16(value);
 }
 
 // Unlike setAddrWindow in Adafruit_TFTLCD, this version issues the
@@ -372,17 +396,13 @@ void Adafruit_TFTDMA::setAddrWindow(
     CD_COMMAND;
     write8(ILI9341_COLADDRSET);
     CD_DATA;
-    write8(x1 >> 8);
-    write8(x1);
-    write8(x2 >> 8);
-    write8(x2);
+    write16(x1);
+    write16(x2);
     CD_COMMAND;
     write8(ILI9341_PAGEADDRSET);
     CD_DATA;
-    write8(y1 >> 8);
-    write8(y1);
-    write8(y2 >> 8);
-    write8(y2);
+    write16(y1);
+    write16(y2);
     CD_COMMAND;
     write8(ILI9341_MEMORYWRITE);
     CD_DATA;
@@ -401,11 +421,15 @@ bool TFT_framebuffer::begin(void) {
 
     // Initialize descriptor list (one per scanline)
     for(int d=0; d<TFTHEIGHT; d++) {
-        // No need to set SRCADDR, DESCADDR or BTCNT -- done in update()
+        // No need to seSRCADDR, DESCADDR or BTCNT -- done in update()
         descriptor[d].BTCTRL.bit.VALID    = true;
         descriptor[d].BTCTRL.bit.EVOSEL   = 0x3; // Event strobe on beat xfer
         descriptor[d].BTCTRL.bit.BLOCKACT = DMA_BLOCK_ACTION_NOACT;
+#if TFT_INTERFACE == TFT_INTERFACE_8
         descriptor[d].BTCTRL.bit.BEATSIZE = DMA_BEAT_SIZE_BYTE;
+#elif TFT_INTERFACE == TFT_INTERFACE_16
+        descriptor[d].BTCTRL.bit.BEATSIZE = DMA_BEAT_SIZE_HWORD;
+#endif
         descriptor[d].BTCTRL.bit.SRCINC   = 1; // Increment source
         descriptor[d].BTCTRL.bit.DSTINC   = 0; // Don't increment dest
         descriptor[d].BTCTRL.bit.STEPSEL  = DMA_STEPSEL_SRC;
@@ -536,7 +560,9 @@ void TFT_framebuffer::update(void) {
              h      = maxy - miny;     // Is actually height - 1
     uint32_t offset = miny * TFTWIDTH + minx; // Index of first pixel
     offset += w; // DMA src needs to be at END of data!
-    w      *= 2; // Byte count = 2X width
+#if TFT_INTERFACE == TFT_INTERFACE_8
+    w      *= 2; // Byte count = 2X width (else halfwords = 1X)
+#endif
     for(uint16_t d=0; d<=h; d++, offset += TFTWIDTH) {
         descriptor[d].SRCADDR.reg  = (uint32_t)&framebuf[offset];
         descriptor[d].BTCNT.reg    = w;
@@ -716,9 +742,15 @@ void TFT_segmented::update(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
         if(idx < 2) {
             while(dma_busy); // Wait for prior transfer to complete
             // Send from buf[idx]
+#if TFT_INTERFACE == TFT_INTERFACE_8
             descriptor->BTCNT.reg   = width * linesThisSegment * 2;
             descriptor->SRCADDR.reg = (uint32_t)buf[idx] +
                                       descriptor->BTCNT.reg;
+#elif TFT_INTERFACE == TFT_INTERFACE_16
+            descriptor->BTCNT.reg   = width * linesThisSegment;
+            descriptor->SRCADDR.reg = (uint32_t)buf[idx] +
+                                      descriptor->BTCNT.reg * 2;
+#endif
             dma_busy                = true;
             dma.startJob();
             dma.trigger();
@@ -776,7 +808,13 @@ bool TFT_scanline::begin(void) {
             scanline[s].descriptor[d].BTCTRL.bit.EVOSEL   = 0x3;
             scanline[s].descriptor[d].BTCTRL.bit.BLOCKACT =
               DMA_BLOCK_ACTION_NOACT;
-            scanline[s].descriptor[d].BTCTRL.bit.BEATSIZE = DMA_BEAT_SIZE_BYTE;
+#if TFT_INTERFACE == TFT_INTERFACE_8
+            scanline[s].descriptor[d].BTCTRL.bit.BEATSIZE =
+              DMA_BEAT_SIZE_BYTE;
+#elif TFT_INTERFACE == TFT_INTERFACE_16
+            scanline[s].descriptor[d].BTCTRL.bit.BEATSIZE =
+              DMA_BEAT_SIZE_HWORD;
+#endif
             scanline[s].descriptor[d].BTCTRL.bit.SRCINC   = 1;
             scanline[s].descriptor[d].BTCTRL.bit.DSTINC   = 0;
             scanline[s].descriptor[d].BTCTRL.bit.STEPSEL  = DMA_STEPSEL_SRC;
@@ -798,7 +836,11 @@ bool TFT_scanline::begin(void) {
 }
 
 void TFT_scanline::addSpan(uint16_t *addr, int16_t w) {
-    scanline[lineIdx].descriptor[spanIdx].BTCNT.reg    = w * 2;
+#if TFT_INTERFACE == TFT_INTERFACE_8
+    scanline[lineIdx].descriptor[spanIdx].BTCNT.reg    = w * 2; // Bytes
+#elif TFT_INTERFACE == TFT_INTERFACE_16
+    scanline[lineIdx].descriptor[spanIdx].BTCNT.reg    = w;     // Halfwords
+#endif
     scanline[lineIdx].descriptor[spanIdx].SRCADDR.reg  = (uint32_t)addr+w*2;
     scanline[lineIdx].descriptor[spanIdx].DESCADDR.reg =
       (uint32_t)&scanline[lineIdx].descriptor[spanIdx + 1];
