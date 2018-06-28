@@ -18,15 +18,12 @@ TFT_framebuffer tft(TC, RESET, CS, CD, RD, WR, D0, PERIPH);
 
 // Some boxes...
 struct {
-  uint16_t color;      // 16-bit color
   int16_t  oldx, oldy; // Prior position
   int16_t  x, y;       // Current position
   int8_t   vx, vy;     // Current velocity (+1 or -1)  
-} box[3] = {
-  { 0xF800 }, // Red box
-  { 0x07E0 }, // Green box
-  { 0x001F }  // Blue box
-};
+} box[3];
+// And their corresponding colors...
+const uint16_t color[3] = { 0xF800, 0x07E0, 0x001F };
 
 uint32_t startTime, frame = 0;
 
@@ -89,7 +86,7 @@ void loop() {
 
   // Draw new boxes
   for(i=0; i<3; i++) {
-    tft.fillRect(box[i].x, box[i].y, 100, 100, box[i].color);
+    tft.fillRect(box[i].x, box[i].y, 100, 100, color[i]);
   }
 
   // Start new screen update in the background
