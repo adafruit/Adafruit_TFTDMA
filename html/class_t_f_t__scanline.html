@@ -92,9 +92,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ad227d9a7f0ab4d577ffca82b5a27209e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_t_f_t__scanline.html#ad227d9a7f0ab4d577ffca82b5a27209e">update</a> (int16_t x1, int16_t y1, int16_t x2, int16_t y2, void(*userCallback)(uint16_t *dest, void *udPtr), void *userData)</td></tr>
 <tr class="memdesc:ad227d9a7f0ab4d577ffca82b5a27209e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Refreshes specified region of the display. Region will be divided vertically into scanlines, and a callback is then invoked to draw each line as needed (line contents are not preserved; every invocation must fully render that line) and a DMA transfer is initiated while then processing the next line. Function returns when last DMA transfer completes.  <a href="#ad227d9a7f0ab4d577ffca82b5a27209e">More...</a><br /></td></tr>
 <tr class="separator:ad227d9a7f0ab4d577ffca82b5a27209e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ace150d6c01de4f2fe0699cc78c6c5a49"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_t_f_t__scanline.html#ace150d6c01de4f2fe0699cc78c6c5a49">addSpan</a> (uint16_t *addr, int16_t w)</td></tr>
-<tr class="memdesc:ace150d6c01de4f2fe0699cc78c6c5a49"><td class="mdescLeft">&#160;</td><td class="mdescRight">User callback invokes this function one or more times to specify the next 'span' &ndash; a horizontal length of pixels &ndash; to issue along the scanline being rendered, left to right.  <a href="#ace150d6c01de4f2fe0699cc78c6c5a49">More...</a><br /></td></tr>
-<tr class="separator:ace150d6c01de4f2fe0699cc78c6c5a49"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a53a64f43163dd91902fa8f6d67071c90"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_t_f_t__scanline.html#a53a64f43163dd91902fa8f6d67071c90">addSpan</a> (uint16_t *addr, int16_t w, bool inc=1)</td></tr>
+<tr class="memdesc:a53a64f43163dd91902fa8f6d67071c90"><td class="mdescLeft">&#160;</td><td class="mdescRight">User callback invokes this function one or more times to specify the next 'span' &ndash; a horizontal length of pixels &ndash; to issue along the scanline being rendered, left to right.  <a href="#a53a64f43163dd91902fa8f6d67071c90">More...</a><br /></td></tr>
+<tr class="separator:a53a64f43163dd91902fa8f6d67071c90"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_class_adafruit___t_f_t_d_m_a"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_class_adafruit___t_f_t_d_m_a')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_adafruit___t_f_t_d_m_a.html">Adafruit_TFTDMA</a></td></tr>
 <tr class="memitem:a5a8d2859e09ec088578d1795086cec49 inherit pub_methods_class_adafruit___t_f_t_d_m_a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_adafruit___t_f_t_d_m_a.html#a5a8d2859e09ec088578d1795086cec49">Adafruit_TFTDMA</a> (int8_t tc, int8_t reset, int8_t cs, int8_t cd, int8_t rd, int8_t wr, int8_t d0, _EPioType periph)</td></tr>
 <tr class="memdesc:a5a8d2859e09ec088578d1795086cec49 inherit pub_methods_class_adafruit___t_f_t_d_m_a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor. Takes note of the hardware configuration to use, but does not itself initialize any hardware yet.  <a href="class_adafruit___t_f_t_d_m_a.html#a5a8d2859e09ec088578d1795086cec49">More...</a><br /></td></tr>
@@ -389,8 +389,8 @@ Adafruit_ZeroDMA&#160;</td><td class="memItemRight" valign="bottom"><a class="el
 
 </div>
 </div>
-<a id="ace150d6c01de4f2fe0699cc78c6c5a49"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ace150d6c01de4f2fe0699cc78c6c5a49">&#9670;&nbsp;</a></span>addSpan()</h2>
+<a id="a53a64f43163dd91902fa8f6d67071c90"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a53a64f43163dd91902fa8f6d67071c90">&#9670;&nbsp;</a></span>addSpan()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -405,7 +405,13 @@ Adafruit_ZeroDMA&#160;</td><td class="memItemRight" valign="bottom"><a class="el
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">int16_t&#160;</td>
-          <td class="paramname"><em>w</em>&#160;</td>
+          <td class="paramname"><em>w</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>inc</em> = <code>1</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -420,6 +426,7 @@ Adafruit_ZeroDMA&#160;</td><td class="memItemRight" valign="bottom"><a class="el
   <table class="params">
     <tr><td class="paramname">addr</td><td>Pointer to 16-bit pixel data at the start of the span. </td></tr>
     <tr><td class="paramname">w</td><td>Horizontal length of span, in pixels. The total length of all spans on a given scanline MUST match the width of the region passed to <a class="el" href="class_t_f_t__scanline.html#ad227d9a7f0ab4d577ffca82b5a27209e" title="Refreshes specified region of the display. Region will be divided vertically into scanlines...">update()</a>; no clipping is performed. Spans are always added sequentially left-to-right, there is no insert or reverse operation; speed is of the essence. The internal span counter is always reset to 0 (left edge of region) at the start of each scanline. </td></tr>
+    <tr><td class="paramname">inc</td><td>Selects whether source address increment is enabled in DMA transfer descriptor. Default is 1 (true). If 0, and if using the 16-bit parallel interface, this will fill the span with the single color value at 'addr' (in 8-bit mode, this only makes sense if the color's high and low bytes are the same, e.g. black, white and a dubious and strange assortment of colors). </td></tr>
   </table>
   </dd>
 </dl>
