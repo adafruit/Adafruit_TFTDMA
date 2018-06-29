@@ -1,12 +1,13 @@
-// Example for the Adafruit_TFTDMA TFT_framebuffer object.
-// This is a huge memory hog because the entire screen is buffered in RAM,
-// but it's easiest to comprehend & use.
+// 'Boing' ball example for TFT_framebuffer.  This is a little more involved
+// than the boxes demo, bypassing the basic drawing primitives and modifying
+// the framebuffer directly.
 
 #include <Adafruit_TFTDMA.h>
-#include "graphics.h"
+#include "graphics.h" // Background and ball data
 
+// TFT hardware config:
 #define TC     2       // Timer/counter index
-#define RESET -1       // Reset pin (-1 if not used)
+#define RESET A4       // Reset pin (-1 if not used)
 #define CS    -1       // Chip-select pin (-1 if not used -- tie to GND)
 #define CD    A2       // Command/data pin
 #define RD    A0       // Read-strobe pin
@@ -16,139 +17,51 @@
 
 TFT_framebuffer tft(TC, RESET, CS, CD, RD, WR, D0, PERIPH);
 
-uint32_t startTime, frame = 0;
+// Each of the colors used in this code is defined twice: 'normal' order if
+// using the ILI9341 16-bit parallel interface, and byte-swapped otherwise.
+// In 8-bit mode, the ILI9341 expects colors most-significant-byte first
+// (big-endian), but the SAMD is little-endian and DMA transfers are served
+// straight from RAM.  The drawing functions in Adafruit_TFTDMA will perform
+// a byte swap as needed, but this demo is modifying the RAM framebuffer
+// directly and must provide its own swap.
+#if TFT_INTERFACE == TFT_INTERFACE_16
+  #define BGCOLOR    0xAD75
+  #define GRIDCOLOR  0xA815
+  #define BGSHADOW   0x5285
+  #define GRIDSHADOW 0x600C
+  #define RED        0xF800
+  #define WHITE      0xFFFF
+#else
+  #define BGCOLOR    0x75AD
+  #define GRIDCOLOR  0x15A8
+  #define BGSHADOW   0x8552
+  #define GRIDSHADOW 0x0C60
+  #define RED        0x00F8
+  #define WHITE      0xFFFF
+#endif
 
-#define YBOUNCE -2.5
+uint16_t *framebuffer; // Pointer to TFT_framebuffer's pixel data
 
-float ballx=20, bally=123, ballvx=0.53, ballvy=YBOUNCE;
-int   balloldx = ballx, balloldy = bally;
-float ballframe = 3;
-uint16_t *buf;
+#define YBOUNCE -2.5   // Upward velocity on ball bounce
+#define YBOTTOM 123    // Ball Y coord at bottom
 
-// Ball is 113x98
-// background is (170,170,170)
-// 0xAA
-// 1010 1101 0111 0101  0xAD75
-// 1010 1000 0001 0101  0xA815
-// shadow is (102,102,102) 0x66
-// grid shadow is (102,0,102)
-// 0101 0010 1000 1010 0x5285
-// 0110 0000 0000 1100 0x600C
+// Ball coordinates are stored floating-point because screen refresh
+// is so quick, whole-pixel movements are just too fast!
+float ballx     = 20.0,  bally    = 123.0,   // Current ball position
+      ballvx    = 0.55,  ballvy   = YBOUNCE, // Ball velocity
+      ballframe = 3;                         // Ball animation frame #
+int   balloldx  = ballx, balloldy = bally;   // Prior ball position
 
-#define BGCOLOR    0xAD75
-#define GRIDCOLOR  0xA815
-#define BGSHADOW   0x5285
-#define GRIDSHADOW 0x600C
+uint16_t palette[16]; // Color table for ball rotation effect
 
-void blit2(
-  uint8_t *src, // Source bitmap data
-  int      sw,  // Source bitmap width
-  int      sh,  // Source bitmap height
-  int      sx1, // Left coord in source bitmap
-  int      sy1, // Top coord in source bitmap
-  int      dx1, // Left coord on screen
-  int      dy1, // Top coord on screen
-  int      w,   // Width of section to copy
-  int      h,   // Height of section to copy
-  int      color1,
-  int      color2) {
-
-  int       x, y;
-  uint16_t *dest;
-
-  src += sy1 * sw + sx1; // Offset to 1st pixel
-  dest = &buf[dy1 * TFTWIDTH + dx1];
-
-  color1 = __builtin_bswap16(color1);
-  color2 = __builtin_bswap16(color2);
-
-  for(y=0; y<h; y++) {
-    for(x=0; x<w; x++) {
-      if(src[x]) dest[x] = color2;
-      else       dest[x] = color1;
-    }
-    src  += sw;
-    dest += TFTWIDTH;
-  }
-}
-
-void blit3(
-  uint8_t *src, // Source bitmap data
-  int      sw,  // Source bitmap width
-  int      sh,  // Source bitmap height
-  int      sx1, // Left coord in source bitmap
-  int      sy1, // Top coord in source bitmap
-  int      dx1, // Left coord on screen
-  int      dy1, // Top coord on screen
-  int      w,   // Width of section to copy
-  int      h,   // Height of section to copy
-  int      color1,
-  int      color2) {
-
-  int       x, y;
-  uint16_t *dest;
-  uint8_t   c;
-
-  src += sy1 * sw + sx1; // Offset to 1st pixel
-  dest = &buf[dy1 * TFTWIDTH + dx1];
-
-  color1 = __builtin_bswap16(color1);
-  color2 = __builtin_bswap16(color2);
-
-  for(y=0; y<h; y++) {
-    for(x=0; x<w; x++) {
-      c = src[x];
-      if(c == 255) dest[x] = color1;
-      else if(c)   dest[x] = color2;
-    }
-    src  += sw;
-    dest += TFTWIDTH;
-  }
-}
-
-void shade(
-  uint8_t *src, // Source bitmap data
-  int      sw,  // Source bitmap width
-  int      sh,  // Source bitmap height
-  int      sx1, // Left coord in source bitmap
-  int      sy1, // Top coord in source bitmap
-  int      dx1, // Left coord on screen
-  int      dy1, // Top coord on screen
-  int      w,   // Width of section to copy
-  int      h,   // Height of section to copy
-  int      color1,
-  int      color2) {
-
-  int       x, y;
-  uint16_t *dest;
-  uint16_t  cmp = __builtin_bswap16(BGCOLOR);
-
-  src += sy1 * sw + sx1; // Offset to 1st pixel
-  dest = &buf[dy1 * TFTWIDTH + dx1];
-
-  color1 = __builtin_bswap16(color1);
-  color2 = __builtin_bswap16(color2);
-
-  for(y=0; y<h; y++) {
-    for(x=0; x<w; x++) {
-      if(src[x]) {
-        if(dest[x] == cmp) dest[x] = color1;
-        else               dest[x] = color2;
-      }
-    }
-    src  += sw;
-    dest += TFTWIDTH;
-  }
-}
+uint32_t startTime, frame = 0; // For frames-per-second estimate
 
 void setup() {
   Serial.begin(9600);
-//  while(!Serial);
+  //while(!Serial);
 
-  // DEBUG: for monitoring non-CCL-inverted PWM output:
-  //pinMode(MOSI, OUTPUT);
-  //pinPeripheral(MOSI, PIO_TIMER); // TC2/WO[0]
-
+  // Initialize TFT hardware.  If this fails, it's usually a problem
+  // with the constructor, like an invalid timer number or data pin.
   if(tft.begin()) {
     Serial.println("Init fail");
     pinMode(LED_BUILTIN, OUTPUT);
@@ -159,77 +72,137 @@ void setup() {
   }
   Serial.println("Init OK!");
 
-  buf = tft.getBuffer();
+  // Save address of RAM framebuffer for later use.
+  framebuffer = tft.getBuffer();
 
-  tft.update(); // Clear display
-
-  tft.waitForUpdate();
-  tft.fillScreen(BGCOLOR);
-  blit2((uint8_t *)bg, BGWIDTH, BGHEIGHT,
-    0, 0, 12, 12,
-    BGWIDTH, BGHEIGHT, BGCOLOR, GRIDCOLOR);
-  tft.update();
+  // Draw initial framebuffer contents:
+  drawBackground(0, 0, TFTWIDTH - 1, TFTHEIGHT - 1);
 
   startTime = millis();
+}
+
+// This function draws (or redraws) a section of the framebuffer using the
+// background bitmap.  It is VERY specific to this program and NOT a
+// general-purpose bitmap renderer!  Bitmap data matches the screen
+// dimensions exactly, there is no accommodation for offsets, clipping, etc.
+void drawBackground(int16_t x1, int16_t y1, int16_t x2, int16_t y2) {
+  const uint8_t *srcPtr;
+  uint16_t      *dstPtr;
+  uint16_t       bitmap, mask, x, w = x2 - x1 + 1;
+  for(; y1 <= y2; y1++) {              // For each scanline...
+    srcPtr = &background[y1][x1 / 8];  // Initial pointer into source bitmap
+    bitmap = *srcPtr++;                // Read first byte
+    mask   = 0x80 >> (x1 & 7);         // Get bitmask for initial column
+    dstPtr = &framebuffer[y1 * TFTWIDTH + x1]; // Initial -> into framebuffer
+    for(x=0; x<w; x++) {               // For each column...
+      *dstPtr++ = (bitmap & mask) ? GRIDCOLOR : BGCOLOR; // Set pixel
+      if(!(mask >>= 1)) {              // Advance bitmask 1 pixel. Past bit 0?
+        mask   = 0x80;                 // Reset bitmask to bit 7
+        bitmap = *srcPtr++;            // Read next byte from bitmap
+      }
+    }
+  }
+}
+
+// This function renders the ball atop the current framebuffer contents.
+// The previous ball must first be erased using drawBackground()...there is
+// nothing clever or optimal here, it's a brute-force approach to keep the
+// code relatively simple.  Like the prior function, this is very specific
+// to this one program and not a general-purpose blitter.
+void drawBall(int16_t x1, int16_t y1) {
+  const uint8_t *srcPtr = &ball[0][0];
+  uint16_t      *dstPtr = &framebuffer[y1 * TFTWIDTH + x1];
+  uint8_t        x, y, c;
+  uint16_t foo;
+
+  // Ball data is 2 pixels per byte -- even pixels are the 4 high bits
+  // of each byte, odd pixels are the low 4 bits.  These are run through
+  // a color palette to determine the 16-bit framebuffer color.
+  for(y=0; y<BALLHEIGHT; y++) {    // For each scanline...
+    for(x=0; x<BALLWIDTH/2; x++) { // For each pair of pixels...
+      // Pixel is skipped (transparent) if value is 0.
+      // Value 1 is in shadow, other values use palette lookup.
+      if(c = (srcPtr[x] >> 4)) {   // Even pixel, opaque?
+        *dstPtr = (c > 1) ? palette[c] :                // Palette
+          (*dstPtr == BGCOLOR) ? BGSHADOW : GRIDSHADOW; // Shadow
+      }
+      dstPtr++;
+      if(c = (srcPtr[x] & 0xF)) {  // Odd pixel, opaque?
+        *dstPtr = (c > 1) ? palette[c] :                // Palette
+          (*dstPtr == BGCOLOR) ? BGSHADOW : GRIDSHADOW; // Shadow
+      }
+      dstPtr++;
+    }
+    srcPtr += BALLWIDTH / 2;
+    dstPtr += TFTWIDTH - BALLWIDTH;
+  }
 }
 
 void loop() {
 
   // Prior DMA transfer must complete before modifying framebuffer.
-  // We can do stuff in the meantime, such as game logic, or in this
-  // case we calculate the next ball position (but don't draw it):
-  balloldx = (int)ballx;
-  ballx   += ballvx;
-  if((ballx <= 13) || (ballx >= 176)) ballvx *= -1;
-
-  balloldy = (int)bally;
-  ballvy  += 0.031;
+  // We can do stuff in the meantime, such as calculate the next ball
+  // position (but don't draw it yet):
+  balloldx = (int16_t)ballx; // Save prior position
+  balloldy = (int16_t)bally;
+  ballx   += ballvx;         // Update position
   bally   += ballvy;
-  if(bally >= 123) {
-    bally  = 123;
-    ballvy = YBOUNCE;
+  ballvy  += 0.031;          // Update Y velocity
+  if((ballx <= 15) || (ballx >= TFTWIDTH - BALLWIDTH))
+    ballvx *= -1;            // Left/right bounce
+  if(bally >= YBOTTOM) {     // Hit ground?
+    bally  = YBOTTOM;        // Clip and
+    ballvy = YBOUNCE;        // bounce up
   }
 
-  // Determine bounds of prior and new positions
-  int minx = (int)ballx;
-  if(balloldx < minx)         minx = balloldx;
-  int miny = (int)bally - 2; // -2 for shadow Y offset
-  if((balloldy -   2) < miny) miny = balloldy - 2;
-  int maxx = (int)ballx + 135; // +135 for ball + shadow width
-  if((balloldx + 135) > maxx) maxx = balloldx + 135;
-  int maxy = (int)bally + 97; // +97 for ball height
-  if((balloldy +  97) > maxy) maxy = balloldy + 97;
+  // Determine screen area to update.  This is the bounds of the ball's
+  // prior and current positions, so the old ball is fully erased and new
+  // ball is fully drawn.
+  uint16_t minx, miny, maxx, maxy;
+  if(frame == 0) {   // If first frame...
+    minx = miny = 0; // Update the whole screen
+    maxx = TFTWIDTH  - 1;
+    maxy = TFTHEIGHT - 1;
+  } else { // Determine bounds of prior and new positions
+    minx = ballx;
+    if(balloldx < minx)                    minx = balloldx;
+    miny = bally;
+    if(balloldy < miny)                    miny = balloldy;
+    maxx = ballx + BALLWIDTH  - 1;
+    if((balloldx + BALLWIDTH  - 1) > maxx) maxx = balloldx + BALLWIDTH  - 1;
+    maxy = bally + BALLHEIGHT - 1;
+    if((balloldy + BALLHEIGHT - 1) > maxy) maxy = balloldy + BALLHEIGHT - 1;
+  }
 
-  ballframe += ballvx * 0.3;
-  if(ballframe < 0)        ballframe += 14;
+  // Ball animation frame # is incremented opposite the ball's X velocity
+  ballframe -= ballvx * 0.3;
+  if(ballframe < 0)        ballframe += 14; // Constrain from 0 to 13
   else if(ballframe >= 14) ballframe -= 14;
 
-  // This function blocks until it's safe to modify the framebuffer...
+  // This function blocks until it's safe to modify the framebuffer:
   tft.waitForUpdate();
 
+  // Set 7 palette entries to white, 7 to red, based on frame number.
+  // This makes the ball spin
+  for(uint8_t i=0; i<14; i++) {
+    palette[i+2] = ((((int)ballframe + i) % 14) < 7) ? WHITE : RED;
+    // Palette entries 0 and 1 aren't used (clear and shadow, respectively)
+  }
+
+  // Erase old ball (redraw background):
+  drawBackground(balloldx, balloldy,
+    balloldx + BALLWIDTH - 1, balloldy + BALLHEIGHT - 1);
+
+  // Draw new ball:
+  drawBall(ballx, bally);
+
+  // Mark the area of the framebuffer we've modified so
+  // TFT_framebuffer is aware and refreshes the correct region:
   tft.sully(minx, miny);
   tft.sully(maxx, maxy);
 
-  // Erase old ball (redraw background)
-  blit2((uint8_t *)bg, BGWIDTH, BGHEIGHT,
-    minx - 12, miny - 12, minx, miny,
-    maxx - minx + 1, maxy - miny + 1, BGCOLOR, GRIDCOLOR);
-
-  // Bug in graphics file - frame 0 & 1 are swapped
-  int b = (int)ballframe;
-  if(b == 0) b = 1;
-  else if(b == 1) b = 0;
-
-  // Draw new ball
-  blit3((uint8_t *)ball, BALLWIDTH, BALLHEIGHT,
-    0, (int)b * 98, (int)ballx, (int)bally, BALLWIDTH, 98,
-    0xFFFF, 0xF800);
-
-  shade((uint8_t *)shadow, SHADOWWIDTH, SHADOWHEIGHT,
-    0, 0, (int)ballx + 62, (int)bally - 2, SHADOWWIDTH, SHADOWHEIGHT,
-    BGSHADOW, GRIDSHADOW);
-
-  // Start new screen update in the background
+  // Transfer the changed area to the screen. This returns almost
+  // immediately and the data transfer proceeds in the background:
   tft.update();
 
   // Show approximate frame rate
