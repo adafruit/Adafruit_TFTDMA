@@ -607,8 +607,15 @@ class TFT_scanline : public Adafruit_TFTDMA {
                     is no insert or reverse operation; speed is of the
                     essence.  The internal span counter is always reset to 0
                     (left edge of region) at the start of each scanline.
+      @param   inc  Selects whether source address increment is enabled in
+                    DMA transfer descriptor.  Default is 1 (true).  If 0,
+                    and if using the 16-bit parallel interface, this will
+                    fill the span with the single color value at 'addr'
+                    (in 8-bit mode, this only makes sense if the color's
+                    high and low bytes are the same, e.g. black, white and
+                    a dubious and strange assortment of colors).
     */
-    void            addSpan(uint16_t *addr, int16_t w);
+    void            addSpan(uint16_t *addr, int16_t w, bool inc=1);
   private:
     uint8_t         lineIdx;
     uint16_t        spanIdx;

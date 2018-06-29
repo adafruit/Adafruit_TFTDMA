@@ -884,7 +884,6 @@ bool TFT_scanline::begin(void) {
             scanline[s].descriptor[d].BTCTRL.bit.BEATSIZE =
               DMA_BEAT_SIZE_HWORD;
 #endif
-            scanline[s].descriptor[d].BTCTRL.bit.SRCINC   = 1;
             scanline[s].descriptor[d].BTCTRL.bit.DSTINC   = 0;
             scanline[s].descriptor[d].BTCTRL.bit.STEPSEL  = DMA_STEPSEL_SRC;
             scanline[s].descriptor[d].BTCTRL.bit.STEPSIZE =
@@ -904,13 +903,15 @@ bool TFT_scanline::begin(void) {
     return false; // Success
 }
 
-void TFT_scanline::addSpan(uint16_t *addr, int16_t w) {
+void TFT_scanline::addSpan(uint16_t *addr, int16_t w, bool inc) {
 #if TFT_INTERFACE == TFT_INTERFACE_8
     scanline[lineIdx].descriptor[spanIdx].BTCNT.reg    = w * 2; // Bytes
 #elif TFT_INTERFACE == TFT_INTERFACE_16
     scanline[lineIdx].descriptor[spanIdx].BTCNT.reg    = w;     // Halfwords
 #endif
-    scanline[lineIdx].descriptor[spanIdx].SRCADDR.reg  = (uint32_t)addr+w*2;
+    scanline[lineIdx].descriptor[spanIdx].SRCADDR.reg  = (uint32_t)addr;
+    if((scanline[lineIdx].descriptor[spanIdx].BTCTRL.bit.SRCINC = inc)) // sic
+        scanline[lineIdx].descriptor[spanIdx].SRCADDR.reg += w * 2;
     scanline[lineIdx].descriptor[spanIdx].DESCADDR.reg =
       (uint32_t)&scanline[lineIdx].descriptor[spanIdx + 1];
     spanIdx++;
