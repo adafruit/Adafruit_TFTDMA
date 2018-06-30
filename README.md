@@ -4,6 +4,7 @@ High performance ILI9341 display library using SAMD51-specific peripherals.
 ## Supported hardware
 
 Display: ILI9341 320x240 pixels, 16 bits/pixel, landscape orientation. 8-bit parallel interface is known working. 16-bit parallel interface untested. SPI is not implemented, though there's some initial hooks.
+
 Processor: SAMD51, e.g. Adafruit ItsyBitsy M4, Metro M4, Feather M4 (examples are written for the ItsyBitsy M4 pinout).
 
 ## Roadmap
