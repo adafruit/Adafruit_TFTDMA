@@ -62,7 +62,29 @@ $(function() {
 <div class="title"><a class="el" href="class_adafruit___t_f_t_d_m_a.html" title="A base class that interfaces with the SAMD51 hardware, including PORTs, timer/counters, DMA and other operipherals. Unlikely to be instantiated on its own, a few subclasses are provided that represent the display and graphics memory in different ways. Applications must be designed around ONE of these subclasses and stick with it; can&#39;t toggle among them. ">Adafruit_TFTDMA</a> [![Build Status](<a href="https://travis-ci.org/adafruit/Adafruit_TFTDMA.svg?branch=master">https://travis-ci.org/adafruit/Adafruit_TFTDMA.svg?branch=master</a>)](<a href="https://travis-ci.org/adafruit/Adafruit_TFTDMA">https://travis-ci.org/adafruit/Adafruit_TFTDMA</a>) </div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p>ILI9341 library using SAMD51-specific peripherals (DMA, etc.) </p>
+<div class="textblock"><p>High performance ILI9341 display library using SAMD51-specific peripherals.</p>
+<h2>Supported hardware</h2>
+<p>Display: ILI9341 320x240 pixels, 16 bits/pixel, landscape orientation. 8-bit parallel interface is known working. 16-bit parallel interface untested. SPI is not implemented, though there's some initial hooks.</p>
+<p>Processor: SAMD51, e.g. Adafruit ItsyBitsy M4, Metro M4, Feather M4 (examples are written for the ItsyBitsy M4 pinout).</p>
+<h2>Roadmap</h2>
+<ul>
+<li>This is currently focused around a specific future Adafruit project and it's unlikely many outside pull requests will be merged.</li>
+<li>LIKELY to be merged:<ul>
+<li>Bug fixes.</li>
+<li>Anything that can be REMOVED (functions, function arguments, variables, etc.) without impacting functionality.</li>
+<li>Speed optimizations that do not incur significant bulk in RAM or code size.</li>
+</ul>
+</li>
+<li>NOT LIKELY to be merged:<ul>
+<li>Reformatting code for the sake of reformatting code. The resulting large "visual diff" makes it impossible to untangle actual bug fixes from merely rearranged lines.</li>
+<li>Other display types or CPU architectures. This is targeting a very specific project. But the code is Open Source and you're always free and welcome to create a special fork!</li>
+<li>Added convenience functions, function arguments, extra safety bounds-checking, etc. Library is intentionally very "enough rope" minimalist for performance reasons (see last point below).</li>
+<li>Additional drawing primitives, especially subclassing Adafruit_GFX (see last point below).</li>
+<li>Additional examples, unless they very specifically illustrate a concept not already covered, and can do so in a brief way.</li>
+</ul>
+</li>
+<li>The idea is that these might serve as base classes for higher-level code. Tile or sprite engines, for example. Do it atop one of these classes, don't modify the class in a specific representation. User-facing classes could be written to be more friendly, with additional bounds checking and error reporting. This is all just the bare metal here. </li>
+</ul>
 </div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
