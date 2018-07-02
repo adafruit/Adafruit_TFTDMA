@@ -71,13 +71,16 @@ $(function() {
 <p>LIKELY to be merged:</p><ul>
 <li>Bug fixes.</li>
 <li>Anything that can be REMOVED (functions, function arguments, variables, etc.) without impacting functionality.</li>
-<li>Speed optimizations that do not incur significant bulk in RAM or code size. NOT LIKELY to be merged:</li>
+<li>Speed optimizations that do not incur significant bulk in RAM or code size.</li>
+</ul>
+<p>NOT LIKELY to be merged:</p><ul>
 <li>Reformatting code for the sake of reformatting code. The resulting large "visual diff" makes it impossible to untangle actual bug fixes from merely rearranged lines.</li>
 <li>Other display types or CPU architectures. This is targeting a very specific project. But the code is Open Source and you're always free and welcome to create a special fork!</li>
 <li>Added convenience functions, function arguments, extra safety bounds-checking, etc. Library is intentionally very "enough rope" minimalist for performance reasons (see notes below).</li>
 <li>Additional drawing primitives, especially subclassing Adafruit_GFX (see notes below). In fact I might remove the couple of drawing functions that are there; they're mostly for the examples, which could be written differently.</li>
-<li>Additional examples, unless they very specifically illustrate a concept not already covered, and can do so in a brief way. The idea is that these might serve as base classes for higher-level code. Tile or sprite engines, for example. Do it atop one of these classes, don't modify the class into a specific representation. User-facing classes can be written to be more friendly, with additional bounds checking and error reporting. This is all just the bare metal here. </li>
+<li>Additional examples, unless they very specifically illustrate a concept not already covered, and can do so in a brief way.</li>
 </ul>
+<p>The idea is that these might serve as base classes for higher-level code. Tile or sprite engines, for example. Do it atop one of these classes, don't modify the class into a specific representation. User-facing classes can be written to be more friendly, with additional bounds checking and error reporting. This is all just the bare metal here. </p>
 </div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
