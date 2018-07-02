@@ -67,23 +67,16 @@ $(function() {
 <p>Display: ILI9341 320x240 pixels, 16 bits/pixel, landscape orientation. 8-bit parallel interface is known working. 16-bit parallel interface untested. SPI is not implemented, though there's some initial hooks.</p>
 <p>Processor: SAMD51, e.g. Adafruit ItsyBitsy M4, Metro M4, Feather M4 (examples are written for the ItsyBitsy M4 pinout).</p>
 <h2>Roadmap</h2>
-<ul>
-<li>This is currently focused around a specific future Adafruit project and it's unlikely many outside pull requests will be merged.</li>
-<li>LIKELY to be merged:<ul>
+<p>This is currently focused around a specific future Adafruit project and it's unlikely many outside pull requests will be merged.</p>
+<p>LIKELY to be merged:</p><ul>
 <li>Bug fixes.</li>
 <li>Anything that can be REMOVED (functions, function arguments, variables, etc.) without impacting functionality.</li>
-<li>Speed optimizations that do not incur significant bulk in RAM or code size.</li>
-</ul>
-</li>
-<li>NOT LIKELY to be merged:<ul>
+<li>Speed optimizations that do not incur significant bulk in RAM or code size. NOT LIKELY to be merged:</li>
 <li>Reformatting code for the sake of reformatting code. The resulting large "visual diff" makes it impossible to untangle actual bug fixes from merely rearranged lines.</li>
 <li>Other display types or CPU architectures. This is targeting a very specific project. But the code is Open Source and you're always free and welcome to create a special fork!</li>
-<li>Added convenience functions, function arguments, extra safety bounds-checking, etc. Library is intentionally very "enough rope" minimalist for performance reasons (see last point below).</li>
-<li>Additional drawing primitives, especially subclassing Adafruit_GFX (see last point below).</li>
-<li>Additional examples, unless they very specifically illustrate a concept not already covered, and can do so in a brief way.</li>
-</ul>
-</li>
-<li>The idea is that these might serve as base classes for higher-level code. Tile or sprite engines, for example. Do it atop one of these classes, don't modify the class into a specific representation. User-facing classes can be written to be more friendly, with additional bounds checking and error reporting. This is all just the bare metal here. </li>
+<li>Added convenience functions, function arguments, extra safety bounds-checking, etc. Library is intentionally very "enough rope" minimalist for performance reasons (see notes below).</li>
+<li>Additional drawing primitives, especially subclassing Adafruit_GFX (see notes below). In fact I might remove the couple of drawing functions that are there; they're mostly for the examples, which could be written differently.</li>
+<li>Additional examples, unless they very specifically illustrate a concept not already covered, and can do so in a brief way. The idea is that these might serve as base classes for higher-level code. Tile or sprite engines, for example. Do it atop one of these classes, don't modify the class into a specific representation. User-facing classes can be written to be more friendly, with additional bounds checking and error reporting. This is all just the bare metal here. </li>
 </ul>
 </div></div><!-- contents -->
 <!-- start footer part -->
