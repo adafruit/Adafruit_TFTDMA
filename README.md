@@ -1,4 +1,5 @@
-# Adafruit_TFTDMA [![Build Status](https://travis-ci.org/adafruit/Adafruit_TFTDMA.svg?branch=master)](https://travis-ci.org/adafruit/Adafruit_TFTDMA)
+# Adafruit_TFTDMA [![Build Status](https://github.com/adafruit/Adafruit_TFTDMA/workflows/Arduino%20Library%20CI/badge.svg)](https://github.com/adafruit/Adafruit_TFTDMA/actions)[![Documentation](https://github.com/adafruit/ci-arduino/blob/master/assets/doxygen_badge.svg)](http://adafruit.github.io/Adafruit_TFTDMA/html/index.html)
+
 High performance ILI9341 display library using SAMD51-specific peripherals.
 
 ## Supported hardware
