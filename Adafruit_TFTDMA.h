@@ -26,8 +26,8 @@
 #define TFTWIDTH 320                  ///< Display width in pixels
 #define TFTHEIGHT 240                 ///< Display height in pixels
 
-#include <utility/dma.h>
 #include <Adafruit_ZeroDMA.h>
+#include "utility/dma.h"
 
 //--------------------------------------------------------------------------
 /*!
